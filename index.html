@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Financeira</title>
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <style>
+        :root {
+            --azul-escuro: #003366;
+            --laranja: #FF8C00;
+            --verde-sucesso: #28a745;
+            --vermelho-erro: #dc3545;
+            --cinza-fundo: #f8fafc;
+            --branco: #ffffff;
+        }
+
+        #progresso-barra { transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out; }
+
+        /* Animação de pulso dourado */
+    @keyframes pulso-sucesso {
+        0% { box-shadow: 0 0 0 0 rgba(231, 49, 3, 0.842); transform: scale(1); }
+        50% { box-shadow: 0 0 20px 10px rgba(255, 153, 0, 0.767); transform: scale(1.02); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); transform: scale(1); }
+    }
+
+    .progresso-completo {
+        animation: pulso-sucesso 1.5s infinite;
+        background-color: #0fff07 !important; /* Muda para um dourado vibrante */
+    }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--cinza-fundo);
+            margin: 0; padding: 0;
+            color: #334155;
+            display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--azul-escuro);
+            color: var(--branco);
+            padding: 30px 20px 60px;
+            text-align: center;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .header-top { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .header-title { font-size: 1.4rem; font-weight: 700; margin: 0; }
+
+        .container {
+            max-width: 600px; width: 100%;
+            margin: -40px auto 0;
+            padding: 0 20px 100px;
+        }
+
+        .resumo-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;
+        }
+
+        .resumo-card {
+            background: var(--branco); padding: 18px; border-radius: 20px;
+            text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            border-bottom: 4px solid transparent;
+        }
+
+        .resumo-card span { font-size: 0.7rem; color: #64748b; display: block; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
+        .resumo-card strong { font-size: 1.1rem; color: var(--azul-escuro); }
+        .resumo-card.saldo { border-bottom-color: var(--laranja); }
+        .resumo-card.pago { border-bottom-color: var(--verde-sucesso); }
+
+        .month-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--branco); padding: 12px 25px; border-radius: 40px;
+            margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .month-nav button { background: none; border: none; color: var(--azul-escuro); font-size: 1.2rem; cursor: pointer; padding: 5px 15px; }
+        .month-nav h3 { margin: 0; font-size: 1rem; color: var(--azul-escuro); text-transform: capitalize; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-header h2 { font-size: 0.9rem; color: var(--azul-escuro); text-transform: uppercase; }
+        .btn-add { background: var(--laranja); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
+
+        .card {
+            background: var(--branco); border-radius: 18px; padding: 16px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); border-left: 6px solid #e2e8f0;
+        }
+
+        .card.pago { border-left-color: var(--verde-sucesso); }
+        .card.aberto { border-left-color: var(--laranja); }
+
+        .card-info h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--azul-escuro); text-transform: uppercase; }
+        .card-info p { margin: 0; font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
+
+        .card-actions { text-align: right; }
+
+        /* Destaque para contas vencidas */
+        .card.vencido { 
+            border-left-color: var(--vermelho-erro) !important; background-color: #fff5f5; } /* Um tom leve de vermelho no fundo */
+        
+        .card.vencido h4 { color: var(--vermelho-erro); }
+        
+        .val-input {
+            display: block; border: none; background: #f1f5f9; font-weight: 700;
+            color: var(--azul-escuro); text-align: right; padding: 6px 10px;
+            border-radius: 8px; width: 125px; margin-bottom: 8px; font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .status-btn {
+            font-size: 0.65rem; padding: 5px 12px; border-radius: 6px; border: none;
+            font-weight: 700; text-transform: uppercase; cursor: pointer; width: 90px;
+        }
+        .status-btn.pago { background: #dcfce7; color: #166534; }
+        .status-btn.aberto { background: #fff7ed; color: #9a3412; }
+
+        .btn-excluir { border:none; background:none; color:#94a3b8; font-size:11px; cursor:pointer; padding: 5px 0; }
+
+        /* Estilos do Modal Corrigidos */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0, 51, 102, 0.85); 
+            z-index: 2000; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+        
+        .modal-content { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 25px; 
+            width: 100%; 
+            max-width: 400px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); 
+            position: relative;
+        }
+
+        .modal-content h3 { 
+            margin: 0 0 20px; 
+            color: var(--azul-escuro); 
+            font-size: 1.2rem; 
+            text-align: center;
+        }
+        
+        .form-group { 
+            margin-bottom: 15px; 
+            width: 100%; 
+        }
+        
+        .form-group label { 
+            display: block; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #64748b; 
+        }
+        
+        .form-group input, 
+        .form-group select { 
+            display: block;
+            width: 100%; 
+            padding: 12px; 
+            border: 1.5px solid #e2e8f0; 
+            border-radius: 12px; 
+            font-size: 1rem; 
+            outline: none; 
+            font-family: inherit;
+            background-color: #ffffff;
+        }
+        
+        .form-group input:focus, 
+        .form-group select:focus { 
+            border-color: var(--laranja); 
+        }
+        
+        .modal-footer { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+        
+        .btn-modal { 
+            flex: 1; 
+            padding: 14px; 
+            border-radius: 12px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            font-family: inherit;
+        }
+
+        .btn-save-modal { background: var(--azul-escuro); color: white; }
+        .btn-cancel-modal { background: #f1f5f9; color: #64748b; }
+
+        #loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    </style>
+</head>
+<body>
+
+<div id="loading-screen">
+    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--laranja);"></i>
+    <p style="margin-top: 15px; font-weight: bold; color: var(--azul-escuro)">Sincronizando com o Banco...</p>
+</div>
+
+<header>
+    <div class="header-top">"O Senhor é o meu pastor, nada me faltará." - Salmos 23:1</div>
+    <h1 class="header-title">Gestão Financeira</h1>
+</header>
+
+<div class="container">
+    <div class="resumo-grid">
+        <div class="resumo-card"><span>Entradas</span><strong id="stat-receita">R$ 0,00</strong></div>
+        <div class="resumo-card saldo"><span>Saldo Real</span><strong id="stat-saldo">R$ 0,00</strong></div>
+        <div class="resumo-card pago"><span>Total Pago</span><strong id="stat-pago" style="color: var(--verde-sucesso);">R$ 0,00</strong></div>
+        <div class="resumo-card" style="border-bottom-color: var(--vermelho-erro);"><span>Em Aberto</span><strong id="stat-aberto" style="color: var(--vermelho-erro);">R$ 0,00</strong></div>
+    </div>
+
+    <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--azul-escuro); margin-bottom: 8px; text-transform: uppercase;">
+        <span>Progresso de Pagamentos</span>
+        <span id="progresso-porcentagem">0%</span>
+    </div>
+    <div style="background: #e2e8f0; height: 12px; border-radius: 10px; overflow: hidden;">
+        <div id="progresso-barra" style="background: #28a745; width: 0%; height: 100%;"></div>
+    </div>
+    
+</div>
+
+    <div class="month-nav">
+        <button id="btn-prev"><i class="fas fa-chevron-left"></i></button>
+        <h3 id="mes-label">...</h3>
+        <button id="btn-next"><i class="fas fa-chevron-right"></i></button>
+    </div>
+
+    <div class="section-header"><h2>Contas Fixas</h2><button class="btn-add" id="add-fixa">+ Add</button></div>
+    <div id="lista-fixas"></div>
+
+    <div class="section-header" style="margin-top: 30px;"><h2>Gastos Variáveis</h2><button class="btn-add" id="add-variavel">+ Add</button></div>
+    <div id="lista-variaveis"></div>
+
+    <div class="section-header" style="margin-top: 30px;"><h2>Recebimentos</h2><button class="btn-add" id="add-receita">+ Add</button></div>
+    <div id="lista-receitas"></div>
+
+    <div class="section-header" style="margin-top: 40px;">
+        <h2>Resumo por Pessoa (Saídas)</h2>
+    </div>
+    <div id="resumo-final-container" style="background: var(--branco); padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-top: 20px;">
+    <h3 style="font-size: 1rem; color: var(--azul-escuro); margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+        <i class="fas fa-chart-pie"></i> Resumo por Pessoa
+    </h3>
+    <div id="resumo-pessoas" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        </div>
+</div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <button id="btn-clone" style="background: #f1f5f9; border: 2px dashed var(--azul-escuro); padding: 12px 20px; border-radius: 15px; color: var(--azul-escuro); font-weight: 600; cursor: pointer; font-family: inherit;">
+            <i class="fas fa-sync"></i> Importar Fixas do Mês Anterior
+        </button>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3 id="modal-titulo">Novo Registro</h3>
+        <div class="form-group">
+            <label>Responsável</label>
+            <select id="campo-quem">
+                <option value="Karla">Karla</option>
+                <option value="Mônica">Mônica</option>
+                <option value="Guimarães">Guimarães</option>
+                <option value="Eclezia">Eclezia</option>
+                <option value="Outros">Outros</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Descrição</label>
+            <input type="text" id="campo-desc" placeholder="Ex: Enel, Hapvida, Tim...">
+        </div>
+
+        <div class="form-group">
+            <label>Valor</label>
+            <input type="text" id="campo-valor" placeholder="R$ 0,00">
+        </div>
+
+        <div class="form-group">
+            <label id="label-data">Vencimento</label> 
+            <input type="date" id="campo-data">
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-modal btn-cancel-modal" id="btn-cancel">Voltar</button>
+            <button class="btn-modal btn-save-modal" id="btn-save">Salvar</button>
+        </div>
+
+        
+    </div>
+</div>
+
+
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDu_p2cO3FIHEMstdKtirMtP5D7an-p_tw",
+        authDomain: "gestao-financeira-bfdd8.firebaseapp.com",
+        projectId: "gestao-financeira-bfdd8",
+        storageBucket: "gestao-financeira-bfdd8.firebasestorage.app",
+        messagingSenderId: "594929048544",
+        appId: "1:594929048544:web:bc6989f12e80b18881a985"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = "gestaofinanceira"; 
+
+    let user = null;
+    let dataView = new Date();
+    let modalTipo = "";
+
+    const formatMoney = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const parseMoney = (s) => parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const getPeriodoId = (d) => `${d.getMonth() + 1}-${d.getFullYear()}`;
+
+    const fecharModal = () => {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('campo-desc').value = "";
+    document.getElementById('campo-valor').value = "";
+    document.getElementById('campo-data').value = "";
+};
+
+    // Máscara Monetária
+    document.getElementById('campo-valor').oninput = (e) => {
+        let v = e.target.value.replace(/\D/g,'');
+        v = (v/100).toFixed(2) + '';
+        v = v.replace(".", ",");
+        v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+        v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+        e.target.value = "R$ " + v;
+    };
+
+    const startAuth = async () => {
+        try {
+            await signInAnonymously(auth);
+            onAuthStateChanged(auth, (u) => {
+                if (u) {
+                    user = u;
+                    document.getElementById('loading-screen').style.display = 'none';
+                    sync();
+                }
+            });
+        } catch (err) {
+            console.error("Erro Auth:", err);
+            alert("Erro de conexão. Verifique sua internet.");
+        }
+    };
+
+    let unsub = null;
+    const sync = () => {
+        if (!user) return;
+        if (unsub) unsub();
+
+        const period = getPeriodoId(dataView);
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', `fin_${period}`);
+
+        unsub = onSnapshot(colRef, (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render(data);
+        }, (err) => {
+            console.error("Erro Firestore:", err);
+        });
+
+        const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        document.getElementById('mes-label').innerText = `${meses[dataView.getMonth()]} / ${dataView.getFullYear()}`;
+    };
+
+const render = (itens) => {
+    const lists = { 
+        fixa: document.getElementById('lista-fixas'), 
+        variavel: document.getElementById('lista-variaveis'), 
+        receita: document.getElementById('lista-receitas') 
+    };
+    Object.values(lists).forEach(l => l.innerHTML = "");
+    
+    const hojeStr = new Date().toISOString().split('T')[0]; // Data de hoje (AAAA-MM-DD)
+    let tot = { rec: 0, pago: 0, ab: 0 };
+
+    itens.forEach(i => {
+        // Lógica de destaque: Se for fixa, não estiver paga e a data for menor que hoje
+        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
+        
+        const card = document.createElement('div');
+        // Adiciona a classe 'vencido' se a condição for verdadeira
+        card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
+        
+        card.innerHTML = `
+            <div class="card-info">
+                <h4>${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida"></i>' : ''}</h4>
+                <p>${i.quem} • ${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
+                <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
+            </div>
+            <div class="card-actions">
+                <input type="text" class="val-input" value="${formatMoney(i.valor)}" onchange="window.updateVal('${i.id}', this.value)">
+                ${i.type !== 'receita' ? `<button class="status-btn ${i.pago ? 'pago' : 'aberto'}" onclick="window.togStatus('${i.id}', ${i.pago})">${i.pago ? 'PAGO' : 'ABERTO'}</button>` : ''}
+            </div>
+        `;
+        lists[i.type]?.appendChild(card);
+        
+        if (i.type === 'receita') tot.rec += i.valor; 
+        else if (i.pago) tot.pago += i.valor; 
+        else tot.ab += i.valor;
+
+    // ... dentro da função render, logo após o loop de itens e cálculos de totais ...
+
+const totalDespesas = tot.pago + tot.ab;
+const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
+
+// Atualiza a largura da barra e o texto da porcentagem
+const barra = document.getElementById('progresso-barra');
+const textoPorcentagem = document.getElementById('progresso-porcentagem');
+
+if (barra && textoPorcentagem) {
+    barra.style.width = `${porcentagem}%`;
+    textoPorcentagem.innerText = `${porcentagem}%`;
+
+    // Aplica a cor básica
+    barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
+
+    // Lógica do 100%
+    if (porcentagem === 100) {
+        barra.classList.add('progresso-completo');
+    } else {
+        barra.classList.remove('progresso-completo');
+    }
+}
+
+    });
+
+    
+
+    // Lógica para o Relatório por Pessoa
+    const gastosPorPessoa = {};
+    const coresPessoas = {
+        "Mônica": "#e91e63",
+        "Karla": "#9c27b0",
+        "Guimarães": "#2196f3",
+        "Eclézia": "#ff9800"
+    };
+    
+    itens.forEach(i => {
+        // Somamos apenas saídas (fixas e variáveis)
+        if (i.type !== 'receita') {
+            const nome = i.quem || "Outros";
+            gastosPorPessoa[nome] = (gastosPorPessoa[nome] || 0) + i.valor;
+        }
+    });
+
+    const listaPessoas = document.getElementById('resumo-pessoas');
+    listaPessoas.innerHTML = "";
+
+    // Criamos um card para cada pessoa que teve gastos
+    Object.entries(gastosPorPessoa).forEach(([nome, total]) => {
+        const cor = coresPessoas[nome] || "#64748b";
+        const div = document.createElement('div');
+        div.className = 'resumo-card';
+        div.style.borderBottom = `4px solid ${cor}`; // Uso de template string com crase
+        div.innerHTML = `
+            <span style="color: ${cor}; font-weight: 700;">${nome}</span>
+            <strong style="font-size: 0.95rem;">${formatMoney(total)}</strong>
+        `;
+        listaPessoas.appendChild(div);
+    });
+
+    
+    // Atualização dos stats principais (mantenha o que já existe abaixo)
+    document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
+    document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
+    document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
+    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
+};
+
+
+    window.updateVal = async (id, v) => {
+        if (!user) return;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id), { valor: parseMoney(v) });
+    };
+
+    window.togStatus = async (id, s) => {
+        if (!user) return;
+        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id), { pago: !s });
+    };
+
+    window.excluir = async (id) => {
+        if (!user) return;
+        if (confirm("Remover este registro?")) {
+            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id));
+        }
+    };
+
+    // Tornar funções globais para o HTML acessar (necessário em type="module")
+    window.updateVal = async (id, v) => {
+        try {
+            const period = getPeriodoId(dataView);
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
+            await updateDoc(ref, { valor: parseMoney(v) });
+        } catch (e) { console.error("Erro ao atualizar valor:", e); }
+    };
+
+    window.togStatus = async (id, s) => {
+        try {
+            const period = getPeriodoId(dataView);
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
+            await updateDoc(ref, { pago: !s });
+        } catch (e) { console.error("Erro ao alternar status:", e); }
+    };
+
+    window.excluir = async (id) => {
+        if (confirm("Tem certeza que deseja remover este registro?")) {
+            try {
+                const period = getPeriodoId(dataView);
+                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id));
+            } catch (e) { console.error("Erro ao excluir:", e); }
+        }
+    };
+
+    // Evento de Salvar
+document.getElementById('btn-save').onclick = async () => {
+    if (!user) return;
+    const desc = document.getElementById('campo-desc').value;
+    const valorRaw = document.getElementById('campo-valor').value;
+    const valor = parseMoney(valorRaw);
+    const quem = document.getElementById('campo-quem').value;
+    const data = document.getElementById('campo-data').value;
+    const dataFinal = data || new Date().toISOString().split('T')[0];
+
+    if (!desc || valor <= 0) {
+        alert("Por favor, preencha a descrição e um valor válido.");
+        return;
+    }
+
+    try {
+        const id = crypto.randomUUID();
+        const period = getPeriodoId(dataView);
+        const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
+        
+        await setDoc(ref, { 
+            type: modalTipo, 
+            desc, 
+            valor, 
+            quem, 
+            data: dataFinal,
+            pago: (modalTipo === 'receita'), // Se for receita, entra como true (pago) 
+            createdAt: new Date().toISOString() 
+        });
+        
+        fecharModal();
+    } catch (e) {
+        alert("Erro ao salvar no banco de dados.");
+        console.error(e);
+    }
+};
+
+    document.getElementById('btn-prev').onclick = () => { dataView.setMonth(dataView.getMonth() - 1); sync(); };
+    document.getElementById('btn-next').onclick = () => { dataView.setMonth(dataView.getMonth() + 1); sync(); };
+
+    const abrir = (t) => { 
+    modalTipo = t; 
+    
+    // 1. Atualiza o título do modal
+    document.getElementById('modal-titulo').innerText = "Novo Registro (" + t + ")"; 
+    
+    // 2. Troca o rótulo do campo de data
+    const labelData = document.getElementById('label-data');
+    if (t === 'fixa') {
+        labelData.innerText = "Vencimento";
+    } else {
+        labelData.innerText = "Data do Gasto";
+    }
+
+    // 3. Preenche automaticamente com a data de HOJE
+    const hoje = new Date();
+    const dataFormatada = hoje.toISOString().split('T')[0]; // Formato AAAA-MM-DD
+    document.getElementById('campo-data').value = dataFormatada;
+
+    // 4. Mostra o modal
+    document.getElementById('modal').style.display = 'flex'; 
+};
+    document.getElementById('add-fixa').onclick = () => abrir('fixa');
+    document.getElementById('add-variavel').onclick = () => abrir('variavel');
+    document.getElementById('add-receita').onclick = () => abrir('receita');
+    document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
+
+    document.getElementById('btn-save').onclick = async () => {
+        if (!user) return;
+        const desc = document.getElementById('campo-desc').value;
+        const valor = parseMoney(document.getElementById('campo-valor').value);
+        const quem = document.getElementById('campo-quem').value;
+        const data = document.getElementById('campo-data').value;
+        if (!desc || valor <= 0) return alert("Preencha descrição e valor!");
+
+        const id = crypto.randomUUID();
+        const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id);
+        await setDoc(ref, { type: modalTipo, desc, valor, quem, data, pago: false, createdAt: new Date().toISOString() });
+        
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('campo-desc').value = ""; document.getElementById('campo-valor').value = "";
+    };
+
+    document.getElementById('btn-clone').onclick = async () => {
+    if (!user) return;
+    
+    const dAnt = new Date(dataView); 
+    dAnt.setMonth(dAnt.getMonth() - 1);
+    
+    const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dAnt)}`));
+    
+    if (snap.empty) return alert("Nenhum dado encontrado no mês anterior.");
+    
+    let c = 0;
+    // Pegamos o ano e mês atual da visualização para a nova data
+    const anoAtual = dataView.getFullYear();
+    const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
+
+    for (const d of snap.docs) {
+        const dataOriginal = d.data();
+        
+        // Só importamos se for fixa ou receita
+        if (dataOriginal.type === 'fixa' || dataOriginal.type === 'receita') {
+            let novaData = dataOriginal.data;
+
+            // Se existir uma data preenchida, ajustamos para o mês atual
+            if (dataOriginal.data) {
+                const diaOriginal = dataOriginal.data.split('-')[2]; // Pega o dia (ex: 15)
+                novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
+            }
+
+            const nid = crypto.randomUUID();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, nid), { 
+                ...dataOriginal, 
+                id: nid, 
+                data: novaData, // Aqui entra a data atualizada
+                pago: false,
+                createdAt: new Date().toISOString() 
+            });
+            c++;
+        }
+    }
+    alert(c + " itens importados com datas atualizadas!");
+};
+
+    startAuth();
+</script>
+
+</body>
+</html>
