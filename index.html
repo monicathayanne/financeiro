@@ -667,6 +667,12 @@ document.getElementById('btn-save').onclick = async () => {
 
     startAuth();
 </script>
-
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log("App Pronto para Instalar!"))
+      .catch((err) => console.log("Erro no registro do App:", err));
+  }
+</script>
 </body>
 </html>
