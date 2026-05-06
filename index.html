@@ -255,17 +255,6 @@
     <div class="section-header" style="margin-top: 30px;"><h2>Recebimentos</h2><button class="btn-add" id="add-receita">+ Add</button></div>
     <div id="lista-receitas"></div>
 
-    <div class="section-header" style="margin-top: 40px;">
-        <h2>Resumo por Pessoa (Saídas)</h2>
-    </div>
-    <div id="resumo-final-container" style="background: var(--branco); padding: 20px; border-radius: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-top: 20px;">
-    <h3 style="font-size: 1rem; color: var(--azul-escuro); margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-        <i class="fas fa-chart-pie"></i> Resumo por Pessoa
-    </h3>
-    <div id="resumo-pessoas" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-        </div>
-</div>
-
     <div style="text-align: center; margin-top: 40px;">
         <button id="btn-clone" style="background: #f1f5f9; border: 2px dashed var(--azul-escuro); padding: 12px 20px; border-radius: 15px; color: var(--azul-escuro); font-weight: 600; cursor: pointer; font-family: inherit;">
             <i class="fas fa-sync"></i> Importar Fixas do Mês Anterior
@@ -276,16 +265,7 @@
 <div id="modal" class="modal">
     <div class="modal-content">
         <h3 id="modal-titulo">Novo Registro</h3>
-        <div class="form-group">
-            <label>Responsável</label>
-            <select id="campo-quem">
-                <option value="Karla">Karla</option>
-                <option value="Mônica">Mônica</option>
-                <option value="Guimarães">Guimarães</option>
-                <option value="Eclezia">Eclezia</option>
-                <option value="Outros">Outros</option>
-            </select>
-        </div>
+        
         <div class="form-group">
             <label>Descrição</label>
             <input type="text" id="campo-desc" placeholder="Ex: Enel, Hapvida, Tim...">
@@ -402,6 +382,18 @@ const render = (itens) => {
     const hojeStr = new Date().toISOString().split('T')[0]; // Data de hoje (AAAA-MM-DD)
     let tot = { rec: 0, pago: 0, ab: 0 };
 
+    // ORDENAÇÃO MÁGICA: Abertos no topo, Pagos no final. E depois, por data.
+    itens.sort((a, b) => {
+        if (a.pago === b.pago) {
+            // Se os dois tiverem o mesmo status, ordena pela data
+            const dataA = a.data ? new Date(a.data) : new Date('2099-01-01');
+            const dataB = b.data ? new Date(b.data) : new Date('2099-01-01');
+            return dataA - dataB;
+        }
+        // Coloca os não pagos (false) antes dos pagos (true)
+        return a.pago ? 1 : -1; 
+    });
+
     itens.forEach(i => {
         // Lógica de destaque: Se for fixa, não estiver paga e a data for menor que hoje
         const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
@@ -413,7 +405,7 @@ const render = (itens) => {
         card.innerHTML = `
             <div class="card-info">
                 <h4>${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida"></i>' : ''}</h4>
-                <p>${i.quem} • ${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
+                <p>${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
                 <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
             </div>
             <div class="card-actions">
@@ -451,41 +443,6 @@ if (barra && textoPorcentagem) {
     }
 }
 
-    });
-
-    
-
-    // Lógica para o Relatório por Pessoa
-    const gastosPorPessoa = {};
-    const coresPessoas = {
-        "Mônica": "#e91e63",
-        "Karla": "#9c27b0",
-        "Guimarães": "#2196f3",
-        "Eclézia": "#ff9800"
-    };
-    
-    itens.forEach(i => {
-        // Somamos apenas saídas (fixas e variáveis)
-        if (i.type !== 'receita') {
-            const nome = i.quem || "Outros";
-            gastosPorPessoa[nome] = (gastosPorPessoa[nome] || 0) + i.valor;
-        }
-    });
-
-    const listaPessoas = document.getElementById('resumo-pessoas');
-    listaPessoas.innerHTML = "";
-
-    // Criamos um card para cada pessoa que teve gastos
-    Object.entries(gastosPorPessoa).forEach(([nome, total]) => {
-        const cor = coresPessoas[nome] || "#64748b";
-        const div = document.createElement('div');
-        div.className = 'resumo-card';
-        div.style.borderBottom = `4px solid ${cor}`; // Uso de template string com crase
-        div.innerHTML = `
-            <span style="color: ${cor}; font-weight: 700;">${nome}</span>
-            <strong style="font-size: 0.95rem;">${formatMoney(total)}</strong>
-        `;
-        listaPessoas.appendChild(div);
     });
 
     
@@ -546,7 +503,6 @@ document.getElementById('btn-save').onclick = async () => {
     const desc = document.getElementById('campo-desc').value;
     const valorRaw = document.getElementById('campo-valor').value;
     const valor = parseMoney(valorRaw);
-    const quem = document.getElementById('campo-quem').value;
     const data = document.getElementById('campo-data').value;
     const dataFinal = data || new Date().toISOString().split('T')[0];
 
@@ -563,8 +519,7 @@ document.getElementById('btn-save').onclick = async () => {
         await setDoc(ref, { 
             type: modalTipo, 
             desc, 
-            valor, 
-            quem, 
+            valor,  
             data: dataFinal,
             pago: (modalTipo === 'receita'), // Se for receita, entra como true (pago) 
             createdAt: new Date().toISOString() 
@@ -607,21 +562,6 @@ document.getElementById('btn-save').onclick = async () => {
     document.getElementById('add-receita').onclick = () => abrir('receita');
     document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
 
-    document.getElementById('btn-save').onclick = async () => {
-        if (!user) return;
-        const desc = document.getElementById('campo-desc').value;
-        const valor = parseMoney(document.getElementById('campo-valor').value);
-        const quem = document.getElementById('campo-quem').value;
-        const data = document.getElementById('campo-data').value;
-        if (!desc || valor <= 0) return alert("Preencha descrição e valor!");
-
-        const id = crypto.randomUUID();
-        const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id);
-        await setDoc(ref, { type: modalTipo, desc, valor, quem, data, pago: false, createdAt: new Date().toISOString() });
-        
-        document.getElementById('modal').style.display = 'none';
-        document.getElementById('campo-desc').value = ""; document.getElementById('campo-valor').value = "";
-    };
 
     document.getElementById('btn-clone').onclick = async () => {
     if (!user) return;
