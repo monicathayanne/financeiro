@@ -383,6 +383,7 @@
                 <option value="imposto">Imposto (IPVA, IPTU...)</option>
                 <option value="educacao">Educação (Cursos, Facul...)</option>
                 <option value="moradia">Moradia (Condomínio, Luz...)</option>
+                <option value="saude">Saúde (Plano, Farmácia, Médico...)</option>
                 <option value="compras">Compras / Lazer</option>
             </select>
         </div>
@@ -396,6 +397,11 @@
         <div class="form-group">
             <label id="label-data">Vencimento</label> 
             <input type="date" id="campo-data">
+        </div>
+
+        <div class="form-group" id="div-data-pagamento" style="display: none;">
+            <label style="color: var(--verde-sucesso);">Data do Pagamento Efetuado</label> 
+            <input type="date" id="campo-data-pagamento" style="border-color: var(--verde-sucesso);">
         </div>
 
         <div class="modal-footer">
@@ -492,6 +498,13 @@
         document.getElementById('campo-valor').value = "";
         document.getElementById('campo-data').value = "";
         document.getElementById('campo-parcelas').value = "1";
+        
+        const divPagamento = document.getElementById('div-data-pagamento');
+        if (divPagamento) {
+            divPagamento.style.display = 'none';
+            document.getElementById('campo-data-pagamento').value = "";
+        }
+
         window.editandoId = null;
         const divParcelas = document.getElementById('div-parcelas');
         if(divParcelas) divParcelas.style.display = 'block';
@@ -562,7 +575,7 @@
             const card = document.createElement('div');
             card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
             
-            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', lazer: '#f57f17', outros: '#64748b' };
+            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', compras: '#f57f17', saude: '#0d9488', outros: '#64748b' };
             const corDaTag = coresCat[i.categoria] || coresCat['outros'];
 
             card.innerHTML = `
@@ -570,6 +583,7 @@
                     <h4 style="margin: 0; font-size: 0.95rem;">${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida" style="color: var(--vermelho-erro);"></i>' : ''}</h4>
                     <p style="margin: 0; font-size: 0.75rem;">
                         ${i.categoria && i.categoria !== 'outros' ? `<strong style="color: ${corDaTag}; text-transform: uppercase;">${i.categoria}</strong> &bull; ` : ''}${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}
+                        ${i.pago && i.dataPagamento ? `<br><span style="color: var(--verde-sucesso); font-weight: 600; font-size: 0.7rem;"><i class="fas fa-check-double"></i> Pago em: ${i.dataPagamento.split('-').reverse().join('/')}</span>` : ''}
                     </p>
                     <div style="margin-top: 4px;">
                         <button class="btn-excluir" style="margin-right: 12px; color: var(--azul-escuro);" onclick="window.abrirEdicao('${i.id}')"><i class="fas fa-edit"></i> Editar</button>
@@ -624,7 +638,18 @@
         try {
             const period = getPeriodoId(dataView);
             const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id);
-            await updateDoc(ref, { pago: !s });
+            
+            // Se a conta estava aberta (!s), pegamos a data de HOJE para registrar o pagamento
+            if (!s) {
+                const d = new Date();
+                // Ajustando para o fuso horário local corretamente (AAAA-MM-DD)
+                const dataHoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                
+                await updateDoc(ref, { pago: true, dataPagamento: dataHoje });
+            } else {
+                // Se a pessoa desmarcar o pagamento, ele volta a ficar aberto e apagamos a data de pagamento
+                await updateDoc(ref, { pago: false, dataPagamento: null });
+            }
         } catch (e) { console.error("Erro ao alternar status:", e); }
     };
 
@@ -654,6 +679,17 @@
         
         const divParcelas = document.getElementById('div-parcelas');
         if (divParcelas) divParcelas.style.display = 'none';
+
+        // Lógica da Data de Pagamento
+        const divPagamento = document.getElementById('div-data-pagamento');
+        if (divPagamento) {
+            if (item.pago && item.type !== 'receita') {
+                divPagamento.style.display = 'block';
+                document.getElementById('campo-data-pagamento').value = item.dataPagamento || item.data || '';
+            } else {
+                divPagamento.style.display = 'none';
+            }
+        }
         
         document.getElementById('modal').style.display = 'flex';
     };
@@ -685,7 +721,19 @@
             if (window.editandoId) {
                 // CORREÇÃO DO ENDEREÇO NA EDIÇÃO
                 const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, window.editandoId);
-                await updateDoc(ref, { desc, valor, categoria, data });
+                
+                // Monta o pacote base de atualização
+                const updateData = { desc, valor, categoria, data };
+                
+                // Se a data de pagamento estiver visível na edição, pega o valor dela
+                const divPgto = document.getElementById('div-data-pagamento');
+                const campoPgto = document.getElementById('campo-data-pagamento');
+                
+                if (divPgto && divPgto.style.display !== 'none' && campoPgto) {
+                    updateData.dataPagamento = campoPgto.value;
+                }
+
+                await updateDoc(ref, updateData);
             } else {
                 // CORREÇÃO DO ENDEREÇO NA CRIAÇÃO DE NOVOS REGISTROS
                 for (let i = 0; i < parcelas; i++) {
