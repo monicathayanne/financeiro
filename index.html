@@ -395,6 +395,7 @@
                 <option value="cartao">Cartão de Crédito</option>
                 <option value="lazer">Lazer</option>
                 <option value="mercado">Mercado</option>
+                <option value="compras">Compras</option>
             </select>
         </div>
 
@@ -586,7 +587,7 @@
             const card = document.createElement('div');
             card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
             
-            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', mercado: '#f57f17', saude: '#0d9488', outros: '#64748b', cartao: '#4338ca', lazer: '#db2777' };
+            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', mercado: '#15803d', compras: '#f57f17', saude: '#0d9488', outros: '#64748b', cartao: '#4338ca', lazer: '#db2777' };
             const corDaTag = coresCat[i.categoria] || coresCat['outros'];
 
             card.innerHTML = `
@@ -629,7 +630,7 @@
         }
 
         // --- LÓGICA DO GRÁFICO ---
-        let somaCategorias = { imposto: 0, educacao: 0, moradia: 0, saude: 0, mercado: 0, cartao: 0, lazer: 0, outros: 0 };
+        let somaCategorias = { imposto: 0, educacao: 0, moradia: 0, saude: 0, mercado: 0, cartao: 0, lazer: 0, compras: 0, outros: 0 };
         
         itens.forEach(i => {
             if (i.type !== 'receita') {
@@ -651,10 +652,30 @@
             meuGrafico = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Impostos', 'Educação', 'Moradia', 'Saúde', 'Mercado', 'Cartão', 'Lazer', 'Outros'],
+                    labels: ['Impostos', 'Educação', 'Moradia', 'Saúde', 'Cartão', 'Lazer', 'Mercado', 'Compras', 'Outros'],
                     datasets: [{
-                        data: [somaCategorias.imposto, somaCategorias.educacao, somaCategorias.moradia, somaCategorias.saude, somaCategorias.mercado, somaCategorias.cartao, somaCategorias.lazer, somaCategorias.outros],
-                        backgroundColor: ['#d32f2f', '#1976d2', '#7b1fa2', '#0d9488', '#f57f17', '#4338ca', '#db2777','#64748b'],
+                        data: [
+                            somaCategorias.imposto, 
+                            somaCategorias.educacao, 
+                            somaCategorias.moradia, 
+                            somaCategorias.saude, 
+                            somaCategorias.cartao,
+                            somaCategorias.lazer,
+                            somaCategorias.mercado,
+                            somaCategorias.compras,
+                            somaCategorias.outros
+                        ],
+                        backgroundColor: [
+                            '#d32f2f', // imposto
+                            '#1976d2', // educacao
+                            '#7b1fa2', // moradia
+                            '#0d9488', // saude
+                            '#4338ca', // cartao
+                            '#db2777', // lazer
+                            '#15803d', // mercado
+                            '#f57f17', // compras
+                            '#64748b'  // outros
+                        ],
                         borderWidth: 3,
                         borderColor: '#ffffff',
                         hoverOffset: 4
