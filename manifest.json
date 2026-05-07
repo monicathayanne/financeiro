@@ -1,15 +1,13 @@
 {
-  "name": "Gestão Financeira 2026",
-  "short_name": "Financeiro",
-  "description": "App de controle financeiro pessoal"
+  "name": "Controle Financeiro",
+  "short_name": "Finanças",
+  "start_url": "index.html",
   "display": "standalone",
-  "display_override": ["fullscreen", "minimal-ui"],
   "background_color": "#003366",
   "theme_color": "#003366",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "icon.png",
+      "src": "https://cdn-icons-png.flaticon.com/128/1791/1791460.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

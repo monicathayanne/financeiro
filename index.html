@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão Financeira</title>
+    <title>Controle Financeiro</title>
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/128/1791/1791460.png" type="image/png">
     <!-- Google Fonts & FontAwesome -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -54,6 +55,27 @@
 
         .header-top { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
         .header-title { font-size: 1.4rem; font-weight: 700; margin: 0; }
+
+        .btn-logout {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--branco);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: 0.3s;
+            font-family: inherit;
+        }
+
+        .btn-logout:hover {
+            background: var(--laranja);
+            border-color: var(--laranja);
+        }
 
         .container {
             max-width: 600px; width: 100%;
@@ -219,19 +241,78 @@
         .btn-save-modal { background: var(--azul-escuro); color: white; }
         .btn-cancel-modal { background: #f1f5f9; color: #64748b; }
 
+        /* Tela de Login Estilo Portal Contec */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--azul-escuro); z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        .login-card {
+            background: white; padding: 40px 30px; border-radius: 8px; 
+            width: 90%; max-width: 380px; text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        .login-icon {
+            font-size: 3.5rem; color: var(--laranja); margin-bottom: 10px;
+        }
+        
+        .login-card h2 { 
+            color: var(--azul-escuro); font-size: 1.3rem; margin: 0 0 30px; font-weight: 700;
+        }
+        
+        .login-input {
+            width: 100%; padding: 14px; margin-bottom: 15px; 
+            border: 1px solid #cbd5e1; border-radius: 6px;
+            font-size: 1rem; font-family: inherit; outline: none;
+        }
+        
+        .login-input:focus { border-color: var(--laranja); }
+        
+        .btn-login {
+            width: 100%; padding: 14px; background: #1e3a8a; /* Azul um pouco mais vivo para o botão */
+            color: white; border: none; border-radius: 6px; 
+            font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        
+        .btn-login:hover { background: var(--laranja); }
+        
+        .login-links { 
+            display: flex; justify-content: space-between; 
+            margin-top: 20px; font-size: 0.85rem; 
+        }
+        
+        .login-links a { color: var(--azul-escuro); text-decoration: none; cursor: pointer; }
+        .login-links a:hover { text-decoration: underline; color: var(--laranja); }
+
         #loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     </style>
 </head>
 <body>
 
-<div id="loading-screen">
-    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--laranja);"></i>
-    <p style="margin-top: 15px; font-weight: bold; color: var(--azul-escuro)">Sincronizando com o Banco...</p>
+ <div id="login-screen">
+    <div class="login-card">
+        <i class="fas fa-hand-holding-dollar login-icon"></i>
+        <h2>Controle Financeiro</h2>
+        
+        <input type="email" id="login-email" class="login-input" placeholder="Seu e-mail">
+        <input type="password" id="login-pass" class="login-input" placeholder="Sua senha">
+        
+        <button id="btn-entrar" class="btn-login">ACESSAR SISTEMA</button>
+        
+        <div class="login-links">
+            <a id="link-criar">Criar Conta</a>
+            <a id="link-reset">Esqueci a senha</a>
+        </div>
+    </div>
 </div>
 
 <header>
+    <button id="btn-sair" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    
     <div class="header-top">"O Senhor é o meu pastor, nada me faltará." - Salmos 23:1</div>
-    <h1 class="header-title">Gestão Financeira</h1>
+    <h1 class="header-title">Controle Financeiro</h1>
 </header>
 
 <div class="container">
@@ -330,7 +411,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -345,27 +426,77 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = "gestaofinanceira"; 
 
     let user = null;
     let dataView = new Date();
     let modalTipo = "";
 
+    // --- 1. AUTENTICAÇÃO ---
+    const logar = async () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        try { await signInWithEmailAndPassword(auth, email, pass); } 
+        catch (e) { alert("Erro ao acessar: " + e.message); }
+    };
+
+    const criarConta = async () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        if (confirm("Deseja criar uma nova conta com este e-mail?")) {
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("Conta criada com sucesso!");
+            } catch (e) { alert("Erro ao criar conta: " + e.message); }
+        }
+    };
+
+    const resetarSenha = async () => {
+        const email = document.getElementById('login-email').value;
+        if (!email) return alert("Digite seu e-mail primeiro.");
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert("E-mail de recuperação enviado!");
+        } catch (e) { alert("Erro: " + e.message); }
+    };
+
+    onAuthStateChanged(auth, (u) => {
+        const loginScreen = document.getElementById('login-screen');
+        if (u && !u.isAnonymous) {
+            user = u;
+            loginScreen.style.display = 'none';
+            sync(); 
+        } else {
+            if (u && u.isAnonymous) signOut(auth);
+            user = null;
+            loginScreen.style.display = 'flex';
+        }
+    });
+
+    document.getElementById('btn-entrar').onclick = logar;
+    document.getElementById('link-criar').onclick = criarConta;
+    document.getElementById('link-reset').onclick = resetarSenha;// Clique do botão de Sair
+    document.getElementById('btn-sair').onclick = () => {
+        if(confirm("Deseja sair do sistema?")) {
+            signOut(auth);
+        }
+    };
+
+    // --- 2. UTILITÁRIOS ---
     const formatMoney = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const parseMoney = (s) => parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
     const getPeriodoId = (d) => `${d.getMonth() + 1}-${d.getFullYear()}`;
 
     const fecharModal = () => {
-    document.getElementById('modal').style.display = 'none';
-    document.getElementById('campo-desc').value = "";
-    document.getElementById('campo-valor').value = "";
-    document.getElementById('campo-data').value = "";
-    document.getElementById('campo-parcelas').value = "1";
-    window.editandoId = null;
-        document.getElementById('div-parcelas').style.display = 'block';
-};
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('campo-desc').value = "";
+        document.getElementById('campo-valor').value = "";
+        document.getElementById('campo-data').value = "";
+        document.getElementById('campo-parcelas').value = "1";
+        window.editandoId = null;
+        const divParcelas = document.getElementById('div-parcelas');
+        if(divParcelas) divParcelas.style.display = 'block';
+    };
 
-    // Máscara Monetária
     document.getElementById('campo-valor').oninput = (e) => {
         let v = e.target.value.replace(/\D/g,'');
         v = (v/100).toFixed(2) + '';
@@ -375,29 +506,22 @@
         e.target.value = "R$ " + v;
     };
 
-    const startAuth = async () => {
-        try {
-            await signInAnonymously(auth);
-            onAuthStateChanged(auth, (u) => {
-                if (u) {
-                    user = u;
-                    document.getElementById('loading-screen').style.display = 'none';
-                    sync();
-                }
-            });
-        } catch (err) {
-            console.error("Erro Auth:", err);
-            alert("Erro de conexão. Verifique sua internet.");
-        }
-    };
-
+    // --- 3. SINCRONIZAÇÃO COM O BANCO ---
     let unsub = null;
     const sync = () => {
         if (!user) return;
         if (unsub) unsub();
 
+        onSnapshot(doc(db, 'usuarios', user.uid, 'settings', 'config'), (docSnap) => {
+            if (docSnap.exists() && docSnap.data().title) {
+                const titleEl = document.getElementById('app-title');
+                if(titleEl) titleEl.innerText = docSnap.data().title;
+            }
+        });
+
         const period = getPeriodoId(dataView);
-        const colRef = collection(db, 'artifacts', appId, 'public', 'data', `fin_${period}`);
+        // CORREÇÃO AQUI: 5 partes para formar uma Collection válida!
+        const colRef = collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`);
 
         unsub = onSnapshot(colRef, (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -410,315 +534,262 @@
         document.getElementById('mes-label').innerText = `${meses[dataView.getMonth()]} / ${dataView.getFullYear()}`;
     };
 
-const render = (itens) => {
-    const lists = { 
-        fixa: document.getElementById('lista-fixas'), 
-        cartao: document.getElementById('lista-cartao'),
-        variavel: document.getElementById('lista-variaveis'), 
-        receita: document.getElementById('lista-receitas') 
-    };
-    Object.values(lists).forEach(l => l.innerHTML = "");
-    
-    const hojeStr = new Date().toISOString().split('T')[0];
-    let tot = { rec: 0, pago: 0, ab: 0 };
-
-window.dadosTela = itens; // Salva os itens para a edição conseguir ler
-
-    // ORDENAÇÃO: Abertos no topo, Pagos no final. E depois, por categoria e data.
-    itens.sort((a, b) => {
-        if (a.pago !== b.pago) return a.pago ? 1 : -1;
-        
-        // Correção: Protege contra itens antigos que ainda não têm categoria salva
-        const catA = a.categoria || 'outros';
-        const catB = b.categoria || 'outros';
-        if (catA !== catB) return catA.localeCompare(catB); 
-        
-        return new Date(a.data) - new Date(b.data); 
-    });
-
-itens.forEach(i => {
-        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
-
-        const card = document.createElement('div');
-        card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
-        
-        // 1. Dicionário de cores (fica logo acima do HTML)
-        const coresCat = { 
-            imposto: '#d32f2f',  
-            educacao: '#1976d2', 
-            moradia: '#7b1fa2',  
-            compras: '#f57f17',    
-            outros: '#64748b'    
+    // --- 4. RENDERIZAÇÃO NA TELA ---
+    const render = (itens) => {
+        const lists = { 
+            fixa: document.getElementById('lista-fixas'), 
+            cartao: document.getElementById('lista-cartao'),
+            variavel: document.getElementById('lista-variaveis'), 
+            receita: document.getElementById('lista-receitas') 
         };
-        const corDaTag = coresCat[i.categoria] || coresCat['outros'];
+        Object.values(lists).forEach(l => { if(l) l.innerHTML = ""; });
+        
+        window.dadosTela = itens;
+        const hojeStr = new Date().toISOString().split('T')[0];
+        let tot = { rec: 0, pago: 0, ab: 0 };
 
-        // 2. Seu HTML original exato, apenas com a injeção da categoria colorida no <p>
-        card.innerHTML = `
-            <div class="card-info">
-                <h4>${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida"></i>' : ''}</h4>
-                <p>${i.categoria && i.categoria !== 'outros' ? `<span style="color: ${corDaTag}; font-weight: 700; text-transform: uppercase;">${i.categoria}</span> &bull; ` : ''}${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
-                <button class="btn-excluir" style="margin-right: 12px; color: var(--azul-escuro);" onclick="window.abrirEdicao('${i.id}')"><i class="fas fa-edit"></i> Editar</button>
-                <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
-            </div>
-            <div class="card-actions">
-                <input type="text" class="val-input" value="${formatMoney(i.valor)}" onchange="window.updateVal('${i.id}', this.value)">
-                ${i.type !== 'receita' ? `<button class="status-btn ${i.pago ? 'pago' : 'aberto'}" onclick="window.togStatus('${i.id}', ${i.pago})">${i.pago ? 'PAGO' : 'ABERTO'}</button>` : ''}
-            </div>
-        `;
-        
-        lists[i.type]?.appendChild(card);
-        
-        if (i.type === 'receita') tot.rec += i.valor; 
-        else if (i.pago) tot.pago += i.valor; 
-        else tot.ab += i.valor;
-    });
+        itens.sort((a, b) => {
+            if (a.pago !== b.pago) return a.pago ? 1 : -1;
+            const catA = a.categoria || 'outros';
+            const catB = b.categoria || 'outros';
+            if (catA !== catB) return catA.localeCompare(catB); 
+            return new Date(a.data) - new Date(b.data); 
+        });
 
-    const totalDespesas = tot.pago + tot.ab;
-    const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
+        itens.forEach(i => {
+            const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
 
-    const barra = document.getElementById('progresso-barra');
-    const textoPorcentagem = document.getElementById('progresso-porcentagem');
+            const card = document.createElement('div');
+            card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
+            
+            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', lazer: '#f57f17', outros: '#64748b' };
+            const corDaTag = coresCat[i.categoria] || coresCat['outros'];
 
-    if (barra && textoPorcentagem) {
-        barra.style.width = `${porcentagem}%`;
-        textoPorcentagem.innerText = `${porcentagem}%`;
-        barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
-        if (porcentagem === 100) {
-            barra.classList.add('progresso-completo');
-        } else {
-            barra.classList.remove('progresso-completo');
-        }
-    }
+            card.innerHTML = `
+                <div class="card-info" style="display: flex; flex-direction: column; gap: 2px;">
+                    <h4 style="margin: 0; font-size: 0.95rem;">${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida" style="color: var(--vermelho-erro);"></i>' : ''}</h4>
+                    <p style="margin: 0; font-size: 0.75rem;">
+                        ${i.categoria && i.categoria !== 'outros' ? `<strong style="color: ${corDaTag}; text-transform: uppercase;">${i.categoria}</strong> &bull; ` : ''}${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}
+                    </p>
+                    <div style="margin-top: 4px;">
+                        <button class="btn-excluir" style="margin-right: 12px; color: var(--azul-escuro);" onclick="window.abrirEdicao('${i.id}')"><i class="fas fa-edit"></i> Editar</button>
+                        <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
+                    </div>
+                </div>
+                <div class="card-actions" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                    <input type="text" class="val-input" style="margin: 0; padding: 4px 8px; width: 110px;" value="${formatMoney(i.valor)}" onchange="window.updateVal('${i.id}', this.value)">
+                    ${i.type !== 'receita' ? `<button class="status-btn ${i.pago ? 'pago' : 'aberto'}" style="margin: 0;" onclick="window.togStatus('${i.id}', ${i.pago})">${i.pago ? 'PAGO' : 'ABERTO'}</button>` : ''}
+                </div>
+            `;
+            
+            lists[i.type]?.appendChild(card);
+            
+            if (i.type === 'receita') tot.rec += i.valor; 
+            else if (i.pago) tot.pago += i.valor; 
+            else tot.ab += i.valor;
+        });
 
-    document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
-    document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
-    document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
-    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
-};
+        const totalDespesas = tot.pago + tot.ab;
+        const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
 
+        const barra = document.getElementById('progresso-barra');
+        const textoPorcentagem = document.getElementById('progresso-porcentagem');
 
-    window.updateVal = async (id, v) => {
-        if (!user) return;
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id), { valor: parseMoney(v) });
-    };
-
-    window.togStatus = async (id, s) => {
-        if (!user) return;
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id), { pago: !s });
-    };
-
-    window.excluir = async (id) => {
-        if (!user) return;
-        if (confirm("Remover este registro?")) {
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id));
+        if (barra && textoPorcentagem) {
+            barra.style.width = `${porcentagem}%`;
+            textoPorcentagem.innerText = `${porcentagem}%`;
+            barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
+            if (porcentagem === 100) barra.classList.add('progresso-completo');
+            else barra.classList.remove('progresso-completo');
         }
+
+        document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
+        document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
+        document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
+        document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
     };
 
-    window.editandoId = null;
-    window.abrirEdicao = (id) => {
-        const item = window.dadosTela.find(x => x.id === id);
-        if (!item) return;
-
-        window.editandoId = id;
-        modalTipo = item.type;
-        document.getElementById('modal-titulo').innerText = "Editar Registro";
-        
-        document.getElementById('campo-desc').value = item.desc;
-        document.getElementById('campo-valor').value = formatMoney(item.valor);
-        document.getElementById('campo-categoria').value = item.categoria || 'outros';
-        document.getElementById('campo-data').value = item.data || '';
-        
-        // Esconde o campo de parcelas durante a edição para evitar confusão
-        document.getElementById('div-parcelas').style.display = 'none'; 
-        document.getElementById('modal').style.display = 'flex';
-    };
-
-    // Tornar funções globais para o HTML acessar (necessário em type="module")
+    // --- 5. FUNÇÕES GLOBAIS E EDIÇÃO ---
     window.updateVal = async (id, v) => {
+        if (!user) return;
         try {
             const period = getPeriodoId(dataView);
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
+            const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id);
             await updateDoc(ref, { valor: parseMoney(v) });
-        } catch (e) { console.error("Erro ao atualizar valor:", e); }
+        } catch (e) { console.error("Erro ao atualizar:", e); }
     };
 
     window.togStatus = async (id, s) => {
+        if (!user) return;
         try {
             const period = getPeriodoId(dataView);
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
+            const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id);
             await updateDoc(ref, { pago: !s });
         } catch (e) { console.error("Erro ao alternar status:", e); }
     };
 
     window.excluir = async (id) => {
+        if (!user) return;
         if (confirm("Tem certeza que deseja remover este registro?")) {
             try {
                 const period = getPeriodoId(dataView);
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id));
+                await deleteDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id));
             } catch (e) { console.error("Erro ao excluir:", e); }
         }
     };
 
-   // Evento de Salvar
-// Evento de Salvar (Criação e Edição)
-document.getElementById('btn-save').onclick = async () => {
-    if (!user) return;
-    const categoria = document.getElementById('campo-categoria').value;
-    const desc = document.getElementById('campo-desc').value;
-    const valorRaw = document.getElementById('campo-valor').value;
-    const valor = parseMoney(valorRaw);
-    const data = document.getElementById('campo-data').value;
-    const dataFinal = data || new Date().toISOString().split('T')[0];
-    const parcelas = parseInt(document.getElementById('campo-parcelas').value) || 1;
+    window.editandoId = null;
+    window.abrirEdicao = (id) => {
+        const item = window.dadosTela.find(x => x.id === id);
+        if (!item) return;
 
-    if (!desc || valor <= 0) {
-        alert("Por favor, preencha a descrição e um valor válido.");
-        return;
-    }
+        window.editandoId = id;
+        modalTipo = item.type;
+        document.getElementById('modal-titulo').innerText = "Editar Registro";
+        
+        document.getElementById('campo-desc').value = item.desc;
+        document.getElementById('campo-valor').value = formatMoney(item.valor);
+        document.getElementById('campo-categoria').value = item.categoria || 'outros';
+        document.getElementById('campo-data').value = item.data || '';
+        
+        const divParcelas = document.getElementById('div-parcelas');
+        if (divParcelas) divParcelas.style.display = 'none';
+        
+        document.getElementById('modal').style.display = 'flex';
+    };
 
-    document.getElementById('loading-screen').style.display = 'flex';
+    window.saveTitle = async (novoTitulo) => {
+        if (!user) return;
+        try {
+            await setDoc(doc(db, 'usuarios', user.uid, 'settings', 'config'), { title: novoTitulo }, { merge: true });
+        } catch (e) { console.error("Erro ao salvar título:", e); }
+    };
 
-    try {
-        const period = getPeriodoId(dataView);
+// --- 6. EVENTO DE SALVAR E LÓGICA DAS PARCELAS ---
+    document.getElementById('btn-save').onclick = async () => {
+        if (!user) return;
+        const desc = document.getElementById('campo-desc').value;
+        const valor = parseMoney(document.getElementById('campo-valor').value);
+        const categoria = document.getElementById('campo-categoria').value;
+        const data = document.getElementById('campo-data').value || new Date().toISOString().split('T')[0];
+        const parcelas = parseInt(document.getElementById('campo-parcelas').value) || 1;
 
-        if (window.editandoId) {
-            // MODO DE EDIÇÃO: Apenas atualiza o registro atual
-            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, window.editandoId);
-            await updateDoc(ref, { 
-                desc: desc, 
-                categoria: categoria,
-                valor: valor, 
-                data: dataFinal 
-            });
-        } else {
-            // MODO DE CRIAÇÃO: Faz o loop das parcelas normalmente
-            for (let i = 1; i <= parcelas; i++) {
-                const descFinal = parcelas > 1 ? `${desc} ${i}/${parcelas}` : desc;
-                let dataParcela = new Date(dataFinal + 'T12:00:00'); 
-                dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
-                const dataFormatada = dataParcela.toISOString().split('T')[0];
-                const periodId = `${dataParcela.getMonth() + 1}-${dataParcela.getFullYear()}`;
-                const id = crypto.randomUUID();
-                const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${periodId}`, id);
-                
-                await setDoc(ref, { 
-                    type: modalTipo, 
-                    desc: descFinal, 
-                    categoria: categoria,
-                    valor: valor, 
-                    data: dataFormatada,
-                    pago: (modalTipo === 'receita'), 
-                    createdAt: new Date().toISOString() 
-                });
-            }
+        if (!desc || valor <= 0) return alert("Preencha os campos de descrição e valor!");
+        
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.style.display = 'flex';
+
+        try {
+            const period = getPeriodoId(dataView);
+
+            if (window.editandoId) {
+                // CORREÇÃO DO ENDEREÇO NA EDIÇÃO
+                const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, window.editandoId);
+                await updateDoc(ref, { desc, valor, categoria, data });
+            } else {
+                // CORREÇÃO DO ENDEREÇO NA CRIAÇÃO DE NOVOS REGISTROS
+                for (let i = 0; i < parcelas; i++) {
+                    let d = new Date(data + 'T12:00:00');
+                    d.setMonth(d.getMonth() + i);
+                    const pId = getPeriodoId(d);
+                    const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+                    
+                    // Olha o caminho exato aqui:
+                    const refNova = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${pId}`, id);
+                    
+                    await setDoc(refNova, {
+                        type: modalTipo, desc: parcelas > 1 ? `${desc} ${i+1}/${parcelas}` : desc,
+                        valor, categoria, data: d.toISOString().split('T')[0], pago: (modalTipo === 'receita')
+                    });
+                }
+            }
+            document.getElementById('modal').style.display = 'none';
+            fecharModal();
+        } catch (e) { 
+            alert("Erro ao salvar: " + e.message); 
         }
-        
-        fecharModal();
-        sync(); 
-        
-    } catch (e) {
-        alert("Erro ao salvar no banco de dados.");
-        console.error(e);
-    } finally {
-        document.getElementById('loading-screen').style.display = 'none';
-    }
-};
+        
+        if (loading) loading.style.display = 'none';
+    };
 
     document.getElementById('btn-prev').onclick = () => { dataView.setMonth(dataView.getMonth() - 1); sync(); };
     document.getElementById('btn-next').onclick = () => { dataView.setMonth(dataView.getMonth() + 1); sync(); };
 
     const abrir = (t) => { 
-    modalTipo = t; 
-    
-    // 1. Atualiza o título do modal
-    document.getElementById('modal-titulo').innerText = "Novo Registro (" + t + ")"; 
-    
-    // 2. Troca o rótulo do campo de data
-    const labelData = document.getElementById('label-data');
-    if (t === 'fixa') {
-        labelData.innerText = "Vencimento";
-    } else {
-        labelData.innerText = "Data do Gasto/Recebimento";
-    }
+        modalTipo = t; 
+        document.getElementById('modal-titulo').innerText = "Novo Registro (" + t + ")"; 
+        const labelData = document.getElementById('label-data');
+        labelData.innerText = t === 'fixa' ? "Vencimento" : "Data do Gasto/Recebimento";
+        
+        const hoje = new Date();
+        const dataFormatada = hoje.toISOString().split('T')[0]; 
+        document.getElementById('campo-data').value = dataFormatada;
 
-    // 3. Preenche automaticamente com a data de HOJE
-    const hoje = new Date();
-    const dataFormatada = hoje.toISOString().split('T')[0]; // Formato AAAA-MM-DD
-    document.getElementById('campo-data').value = dataFormatada;
+        const divParcelas = document.getElementById('div-parcelas');
+        if (divParcelas) divParcelas.style.display = 'block';
+        window.editandoId = null;
 
-    // 4. Mostra o modal
-    document.getElementById('modal').style.display = 'flex'; 
-};
+        document.getElementById('modal').style.display = 'flex'; 
+    };
+
     document.getElementById('add-fixa').onclick = () => abrir('fixa');
     document.getElementById('add-cartao').onclick = () => abrir('cartao');
     document.getElementById('add-variavel').onclick = () => abrir('variavel');
     document.getElementById('add-receita').onclick = () => abrir('receita');
     document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
 
+    document.getElementById('btn-clone').onclick = async () => {
+        if (!user) return;
+        
+        const periodAtual = getPeriodoId(dataView);
+        const dAnt = new Date(dataView); 
+        dAnt.setMonth(dAnt.getMonth() - 1);
+        const periodAnterior = getPeriodoId(dAnt);
 
-   document.getElementById('btn-clone').onclick = async () => {
-    if (!user) return;
-    
-    const periodAtual = getPeriodoId(dataView);
-    const dAnt = new Date(dataView); 
-    dAnt.setMonth(dAnt.getMonth() - 1);
-    const periodAnterior = getPeriodoId(dAnt);
+        const snapAtual = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`));
+        const descricoesExistentes = snapAtual.docs.map(d => d.data().desc);
 
-    // 1. Pega o que já existe no mês ATUAL para evitar duplicados
-    const snapAtual = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${periodAtual}`));
-    const descricoesExistentes = snapAtual.docs.map(d => d.data().desc);
+        const snapAnterior = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`));
+        
+        if (snapAnterior.empty) return alert("Nenhum dado encontrado no mês anterior.");
+        
+        let contador = 0;
+        const anoAtual = dataView.getFullYear();
+        const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
 
-    // 2. Pega os dados do mês anterior
-    const snapAnterior = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${periodAnterior}`));
-    
-    if (snapAnterior.empty) return alert("Nenhum dado encontrado no mês anterior.");
-    
-    let contador = 0;
-    const anoAtual = dataView.getFullYear();
-    const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
+        for (const d of snapAnterior.docs) {
+            const dataOriginal = d.data();
+            const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
+            
+            if (categoriasParaImportar.includes(dataOriginal.type)) {
+                if (/\d+\/\d+$/.test(dataOriginal.desc)) continue;
+                if (descricoesExistentes.includes(dataOriginal.desc)) continue;
 
-    for (const d of snapAnterior.docs) {
-        const dataOriginal = d.data();
-        
-        // Regra: Importar apenas Fixas, Receitas e Cartões (Ignora Variáveis)
-        const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
-        
-        if (categoriasParaImportar.includes(dataOriginal.type)) {
-            
-            // TRAVA 1: É compra parcelada? (Verifica se o nome termina com algo como " 1/2" ou " 5/10")
-            // Se for parcelada, pula, porque o sistema já lançou ela no futuro na hora de salvar.
-            const isParcela = /\d+\/\d+$/.test(dataOriginal.desc);
-            if (isParcela) continue;
+                let novaData = dataOriginal.data;
+                if (dataOriginal.data) {
+                    const diaOriginal = dataOriginal.data.split('-')[2];
+                    novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
+                }
 
-            // TRAVA 2: Antiduplicação: Se o nome já existe neste mês, pula para o próximo
-            if (descricoesExistentes.includes(dataOriginal.desc)) continue;
+                const nid = crypto.randomUUID();
+                await setDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`, nid), { 
+                    ...dataOriginal, id: nid, data: novaData,
+                    pago: (dataOriginal.type === 'receita'), createdAt: new Date().toISOString() 
+                });
+                contador++;
+            }
+        }
+        
+        alert(contador === 0 ? "Nenhum item novo para importar!" : contador + " itens importados com sucesso!");
+        sync();
+    };
 
-            let novaData = dataOriginal.data;
-            if (dataOriginal.data) {
-                const diaOriginal = dataOriginal.data.split('-')[2];
-                novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
-            }
-
-            const nid = crypto.randomUUID();
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${periodAtual}`, nid), { 
-                ...dataOriginal, 
-                id: nid, 
-                data: novaData,
-                pago: (dataOriginal.type === 'receita'), // Receita entra como pago, os outros não
-                createdAt: new Date().toISOString() 
-            });
-            contador++;
-        }
-    }
-    
-    if (contador === 0) {
-        alert("Nenhum item novo para importar! As contas recorrentes já estão aqui e as parceladas já foram lançadas automaticamente.");
-    } else {
-        alert(contador + " itens importados com sucesso!");
-    }
-};
-
-    startAuth();
+    // Função global para o botão de sair (vamos adicionar no HTML depois que der certo)
+    window.fazerLogout = () => {
+        if(confirm("Deseja sair do sistema?")) {
+            signOut(auth);
+        }
+    };
 </script>
 <script>
   if ('serviceWorker' in navigator) {
