@@ -133,18 +133,6 @@
         
         .card.vencido h4 { color: var(--vermelho-erro); }
 
-        /* Estilos das Etiquetas de Categoria */
-        .badge-cat {
-            font-size: 0.6rem; padding: 3px 8px; border-radius: 8px;
-            text-transform: uppercase; font-weight: 700;
-            display: inline-block; margin-bottom: 6px;
-        }
-        .badge-imposto { background: #ffebee; color: #d32f2f; }
-        .badge-educacao { background: #e3f2fd; color: #003366; }
-        .badge-moradia { background: #f3e5f5; color: #7b1fa2; }
-        .badge-mercado { background: #fff9c4; color: #f57f17; }
-        .badge-outros { background: #f1f5f9; color: #64748b; }
-        
         .val-input {
             display: block; border: none; background: #f1f5f9; font-weight: 700;
             color: var(--azul-escuro); text-align: right; padding: 6px 10px;
@@ -287,6 +275,45 @@
         .login-links a { color: var(--azul-escuro); text-decoration: none; cursor: pointer; }
         .login-links a:hover { text-decoration: underline; color: var(--laranja); }
 
+        /* Estilos para os Modais de Login */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 51, 102, 0.85); /* Fundo azul escuro com transparência */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-card {
+    position: relative; /* Para o botão de fechar ficar posicionado certinho */
+    animation: aparecerModal 0.3s ease-out; /* Dá um efeito suave ao abrir */
+}
+
+.fechar-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    color: #003366;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.fechar-modal:hover {
+    color: #FF8C00;
+}
+
+/* Animação suave */
+@keyframes aparecerModal {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
         #loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
     </style>
 </head>
@@ -306,6 +333,46 @@
             <a id="link-criar">Criar Conta</a>
             <a id="link-reset">Esqueci a senha</a>
         </div>
+    </div>
+</div>
+
+<div id="modal-criar" class="modal-overlay" style="display: none;">
+    <div class="login-card modal-card">
+        <span class="fechar-modal" id="fechar-modal-criar">&times;</span>
+        <i class="fas fa-user-plus login-icon" style="color: #FF8C00;"></i>
+        <h2>Nova Conta</h2>
+        
+        <input type="email" id="novo-email" class="login-input" placeholder="Digite seu e-mail">
+        <input type="password" id="nova-senha" class="login-input" placeholder="Crie uma senha">
+        
+        <button id="btn-cadastrar" class="btn-login" style="background-color: #FF8C00;">CADASTRAR</button>
+    </div>
+</div>
+
+<div id="modal-esqueci" class="modal-overlay" style="display: none;">
+    <div class="login-card modal-card">
+        <span class="fechar-modal" id="fechar-modal-esqueci">&times;</span>
+        <i class="fas fa-envelope login-icon" style="color: #003366;"></i>
+        <h2>Recuperar Senha</h2>
+        
+        <p style="text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+            Digite o e-mail cadastrado e enviaremos um link de recuperação.
+        </p>
+        
+        <input type="email" id="recuperar-email" class="login-input" placeholder="Seu e-mail">
+        
+        <button id="btn-enviar-recuperacao" class="btn-login">ENVIAR LINK</button>
+    </div>
+</div>
+
+<div id="modal-alerta" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-bell login-icon" style="color: #FF8C00; font-size: 2rem; margin-bottom: 10px;"></i>
+        
+        <h3 id="alerta-titulo" style="color: #003366; margin-bottom: 15px;">Aviso</h3>
+        <p id="alerta-mensagem" style="color: #444; margin-bottom: 25px; line-height: 1.5;"></p>
+        
+        <button id="btn-fechar-alerta" class="btn-login" style="width: auto; padding: 10px 40px; border-radius: 8px;">OK</button>
     </div>
 </div>
 
@@ -454,28 +521,51 @@
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-pass').value;
         try { await signInWithEmailAndPassword(auth, email, pass); } 
-        catch (e) { alert("Erro ao acessar: " + e.message); }
+        catch (e) { mostrarAlerta("Erro ao acessar: " + e.message); }
     };
 
-    const criarConta = async () => {
-        const email = document.getElementById('login-email').value;
-        const pass = document.getElementById('login-pass').value;
-        if (confirm("Deseja criar uma nova conta com este e-mail?")) {
-            try {
-                await createUserWithEmailAndPassword(auth, email, pass);
-                alert("Conta criada com sucesso!");
-            } catch (e) { alert("Erro ao criar conta: " + e.message); }
+
+    // Pegando o botão laranja do modal
+const btnCadastrar = document.getElementById('btn-cadastrar');
+
+// Criando a ação de clique nele
+btnCadastrar.addEventListener('click', async () => {
+    // Pegando os valores dos inputs DENTRO do modal
+    const emailNovo = document.getElementById('novo-email').value;
+    const senhaNova = document.getElementById('nova-senha').value;
+
+    // Verificação básica para não mandar vazio
+    if (!emailNovo || !senhaNova) {
+        mostrarAlerta("E-mail e senha são obrigatórios." , "Preencha o e-mail e a senha para cadastrar.");
+        return;
+    }
+
+    // Tentando criar a conta no Firebase
+    try {
+        // Usa a função do Firebase (certifique-se de que o 'auth' está declarado no seu arquivo)
+        await createUserWithEmailAndPassword(auth, emailNovo, senhaNova);
+        
+        // Se deu certo:
+        mostrarAlerta("Conta criada com sucesso!" , "🎉 Faça o login para acessar.");
+        
+        // Limpa os campos do modal
+        document.getElementById('novo-email').value = '';
+        document.getElementById('nova-senha').value = '';
+        
+        // Fecha o modal automaticamente
+        document.getElementById('modal-criar').style.display = 'none';
+
+    } catch (error) {
+        // Tratamento de erros comuns do Firebase para ficar amigável
+        if (error.code === 'auth/email-already-in-use') {
+            mostrarAlerta("Esse e-mail já está cadastrado no sistema." , "Use outro e-mail ou clique em 'Esqueci a Senha'.");
+        } else if (error.code === 'auth/weak-password') {
+            mostrarAlerta("A senha é muito fraca." , "Digite pelo menos 6 caracteres.");
+        } else {
+            mostrarAlerta("Erro ao criar conta: " + error.message);
         }
-    };
-
-    const resetarSenha = async () => {
-        const email = document.getElementById('login-email').value;
-        if (!email) return alert("Digite seu e-mail primeiro.");
-        try {
-            await sendPasswordResetEmail(auth, email);
-            alert("E-mail de recuperação enviado!");
-        } catch (e) { alert("Erro: " + e.message); }
-    };
+    }
+});
 
     onAuthStateChanged(auth, (u) => {
         const loginScreen = document.getElementById('login-screen');
@@ -490,14 +580,83 @@
         }
     });
 
+    // Elementos do Modal de Esqueci a Senha
+const modalEsqueci = document.getElementById('modal-esqueci');
+const btnAbrirEsqueci = document.getElementById('link-reset');
+const btnFecharEsqueci = document.getElementById('fechar-modal-esqueci');
+const btnEnviarRecuperacao = document.getElementById('btn-enviar-recuperacao');
+
+// Abrir o modal
+btnAbrirEsqueci.addEventListener('click', () => {
+    modalEsqueci.style.display = 'flex';
+});
+
+// Fechar o modal no X
+btnFecharEsqueci.addEventListener('click', () => {
+    modalEsqueci.style.display = 'none';
+});
+
+// Fechar o modal clicando fora dele
+window.addEventListener('click', (event) => {
+    if (event.target === modalEsqueci) {
+        modalEsqueci.style.display = 'none';
+    }
+});
+
+// Ação de enviar o e-mail pelo Firebase
+btnEnviarRecuperacao.addEventListener('click', async () => {
+    const emailRecuperacao = document.getElementById('recuperar-email').value;
+
+    if (!emailRecuperacao) {
+        mostrarAlerta("Para recuperar a senha" , "Por favor, digite seu e-mail.");
+        return;
+    }
+
+    try {
+        // Função nativa do Firebase para redefinir senha
+        await sendPasswordResetEmail(auth, emailRecuperacao);
+        
+        mostrarAlerta("Link enviado com sucesso!" , "Verifique sua caixa de entrada e a pasta de spam.");
+        
+        // Limpa o campo e fecha o modal
+        document.getElementById('recuperar-email').value = '';
+        modalEsqueci.style.display = 'none';
+
+    } catch (error) {
+        // Tratamento de erros
+        if (error.code === 'auth/user-not-found') {
+            mostrarAlerta("Não encontramos nenhuma conta com esse e-mail." , "Verifique o e-mail digitado ou crie uma nova conta.");
+        } else if (error.code === 'auth/invalid-email') {
+            mostrarAlerta("Por favor, digite um formato de e-mail válido." , "exemplo@exemplo.com");
+        } else {
+            mostrarAlerta("Erro ao enviar e-mail: " + error.message);
+        }
+    }
+});
+
     document.getElementById('btn-entrar').onclick = logar;
-    document.getElementById('link-criar').onclick = criarConta;
-    document.getElementById('link-reset').onclick = resetarSenha;// Clique do botão de Sair
+
     document.getElementById('btn-sair').onclick = () => {
         if(confirm("Deseja sair do sistema?")) {
             signOut(auth);
         }
     };
+
+    // Função para substituir o alert()
+function mostrarAlerta(titulo, mensagem) {
+    // Troca os textos do HTML pelos textos que você mandou na função
+    document.getElementById('alerta-titulo').innerText = titulo;
+    document.getElementById('alerta-mensagem').innerText = mensagem;
+    
+    // Mostra o modal na tela
+    document.getElementById('modal-alerta').style.display = 'flex';
+}
+
+// Fazer o botão "OK" do alerta fechar ele mesmo
+document.getElementById('btn-fechar-alerta').addEventListener('click', () => {
+    document.getElementById('modal-alerta').style.display = 'none';
+});
+
 
     // --- 2. UTILITÁRIOS ---
     const formatMoney = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -810,7 +969,7 @@
         const data = document.getElementById('campo-data').value || new Date().toISOString().split('T')[0];
         const parcelas = parseInt(document.getElementById('campo-parcelas').value) || 1;
 
-        if (!desc || valor <= 0) return alert("Preencha os campos de descrição e valor!");
+        if (!desc || valor <= 0) return mostrarAlerta("Preencha os campos de descrição e valor!" , "Valor deve ser maior que R$ 0,00.");
         
         const loading = document.getElementById('loading-screen');
         if (loading) loading.style.display = 'flex';
@@ -854,7 +1013,7 @@
             document.getElementById('modal').style.display = 'none';
             fecharModal();
         } catch (e) { 
-            alert("Erro ao salvar: " + e.message); 
+            mostrarAlerta("Erro ao salvar: " + e.message); 
         }
         
         if (loading) loading.style.display = 'none';
@@ -899,7 +1058,7 @@
 
         const snapAnterior = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`));
         
-        if (snapAnterior.empty) return alert("Nenhum dado encontrado no mês anterior.");
+        if (snapAnterior.empty) return mostrarAlerta("Nenhum dado encontrado no mês anterior." , "Não há registros para importar.");
         
         let contador = 0;
         const anoAtual = dataView.getFullYear();
@@ -928,9 +1087,31 @@
             }
         }
         
-        alert(contador === 0 ? "Nenhum item novo para importar!" : contador + " itens importados com sucesso!");
+        mostrarAlerta(contador === 0 ? "Nenhum item novo para importar!" : contador + " itens importados com sucesso!");
         sync();
     };
+
+    // Elementos do Modal de Criar Conta
+const modalCriar = document.getElementById('modal-criar');
+const btnAbrirCriar = document.getElementById('link-criar');
+const btnFecharCriar = document.getElementById('fechar-modal-criar');
+
+// Abrir o modal
+btnAbrirCriar.addEventListener('click', () => {
+    modalCriar.style.display = 'flex';
+});
+
+// Fechar o modal no X
+btnFecharCriar.addEventListener('click', () => {
+    modalCriar.style.display = 'none';
+});
+
+// Fechar o modal se o usuário clicar fora do quadrado branco (no fundo escuro)
+window.addEventListener('click', (event) => {
+    if (event.target === modalCriar) {
+        modalCriar.style.display = 'none';
+    }
+});
 
     // Função global para o botão de sair (vamos adicionar no HTML depois que der certo)
     window.fazerLogout = () => {
