@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --azul-escuro: #003366;
@@ -141,7 +142,7 @@
         .badge-imposto { background: #ffebee; color: #d32f2f; }
         .badge-educacao { background: #e3f2fd; color: #003366; }
         .badge-moradia { background: #f3e5f5; color: #7b1fa2; }
-        .badge-compras { background: #fff9c4; color: #f57f17; }
+        .badge-mercado { background: #fff9c4; color: #f57f17; }
         .badge-outros { background: #f1f5f9; color: #64748b; }
         
         .val-input {
@@ -310,9 +311,9 @@
 
 <header>
     <button id="btn-sair" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    
     <div class="header-top">"O Senhor é o meu pastor, nada me faltará." - Salmos 23:1</div>
     <h1 class="header-title">Controle Financeiro</h1>
+    <i class="fas fa-hand-holding-dollar login-icon"></i>
 </header>
 
 <div class="container">
@@ -321,6 +322,13 @@
         <div class="resumo-card saldo"><span>Saldo Real</span><strong id="stat-saldo">R$ 0,00</strong></div>
         <div class="resumo-card pago"><span>Total Pago</span><strong id="stat-pago" style="color: var(--verde-sucesso);">R$ 0,00</strong></div>
         <div class="resumo-card" style="border-bottom-color: var(--vermelho-erro);"><span>Em Aberto</span><strong id="stat-aberto" style="color: var(--vermelho-erro);">R$ 0,00</strong></div>
+    </div>
+
+    <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); text-align: center; display: none;" id="box-grafico">
+        <h3 style="font-size: 0.8rem; color: var(--azul-escuro); text-transform: uppercase; margin-top: 0; margin-bottom: 10px;">Despesas por Categoria</h3>
+        <div style="position: relative; height: 180px; width: 100%; display: flex; justify-content: center;">
+            <canvas id="graficoCategorias"></canvas>
+        </div>
     </div>
 
     <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
@@ -384,7 +392,9 @@
                 <option value="educacao">Educação (Cursos, Facul...)</option>
                 <option value="moradia">Moradia (Condomínio, Luz...)</option>
                 <option value="saude">Saúde (Plano, Farmácia, Médico...)</option>
-                <option value="compras">Compras / Lazer</option>
+                <option value="cartao">Cartão de Crédito</option>
+                <option value="lazer">Lazer</option>
+                <option value="mercado">Mercado</option>
             </select>
         </div>
 
@@ -436,6 +446,7 @@
     let user = null;
     let dataView = new Date();
     let modalTipo = "";
+    let meuGrafico = null;
 
     // --- 1. AUTENTICAÇÃO ---
     const logar = async () => {
@@ -575,7 +586,7 @@
             const card = document.createElement('div');
             card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
             
-            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', compras: '#f57f17', saude: '#0d9488', outros: '#64748b' };
+            const coresCat = { imposto: '#d32f2f', educacao: '#1976d2', moradia: '#7b1fa2', mercado: '#f57f17', saude: '#0d9488', outros: '#64748b', cartao: '#4338ca', lazer: '#db2777' };
             const corDaTag = coresCat[i.categoria] || coresCat['outros'];
 
             card.innerHTML = `
@@ -616,6 +627,74 @@
             if (porcentagem === 100) barra.classList.add('progresso-completo');
             else barra.classList.remove('progresso-completo');
         }
+
+        // --- LÓGICA DO GRÁFICO ---
+        let somaCategorias = { imposto: 0, educacao: 0, moradia: 0, saude: 0, mercado: 0, cartao: 0, lazer: 0, outros: 0 };
+        
+        itens.forEach(i => {
+            if (i.type !== 'receita') {
+                const cat = i.categoria || 'outros';
+                if (somaCategorias[cat] !== undefined) somaCategorias[cat] += i.valor;
+                else somaCategorias['outros'] += i.valor;
+            }
+        });
+
+        const ctx = document.getElementById('graficoCategorias');
+        const boxGrafico = document.getElementById('box-grafico');
+        
+        // Só mostra o gráfico se tiver alguma despesa cadastrada no mês
+        if (totalDespesas > 0 && ctx && boxGrafico) {
+            boxGrafico.style.display = 'block';
+            
+            if (meuGrafico) meuGrafico.destroy(); // Limpa o gráfico anterior
+
+            meuGrafico = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Impostos', 'Educação', 'Moradia', 'Saúde', 'Mercado', 'Cartão', 'Lazer', 'Outros'],
+                    datasets: [{
+                        data: [somaCategorias.imposto, somaCategorias.educacao, somaCategorias.moradia, somaCategorias.saude, somaCategorias.mercado, somaCategorias.cartao, somaCategorias.lazer, somaCategorias.outros],
+                        backgroundColor: ['#d32f2f', '#1976d2', '#7b1fa2', '#0d9488', '#f57f17', '#4338ca', '#db2777','#64748b'],
+                        borderWidth: 3,
+                        borderColor: '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%', 
+                    plugins: {
+                        legend: { 
+                            position: 'right', 
+                            labels: { boxWidth: 12, font: { size: 10, family: "'Poppins', sans-serif" } } 
+                        },
+                        // NOVO: Lógica da caixinha flutuante com R$ e Porcentagem
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    
+                                    const valor = context.raw;
+                                    // Formata para a nossa moeda
+                                    const formatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+                                    label += formatado;
+
+                                    // Faz o cálculo da porcentagem matemática
+                                    const total = context.chart._metasets[context.datasetIndex].total;
+                                    const porcentagem = Math.round((valor / total) * 100);
+                                    
+                                    return `${label} (${porcentagem}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else if (boxGrafico) {
+            boxGrafico.style.display = 'none'; // Esconde se não tiver gastos no mês
+        }       
 
         document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
         document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
