@@ -103,11 +103,24 @@
 
         .card-actions { text-align: right; }
 
-        /* Destaque para contas vencidas */
+/* Destaque para contas vencidas */
         .card.vencido { 
-            border-left-color: var(--vermelho-erro) !important; background-color: #fff5f5; } /* Um tom leve de vermelho no fundo */
+            border-left-color: var(--vermelho-erro) !important; background-color: #fff5f5; 
+        } 
         
         .card.vencido h4 { color: var(--vermelho-erro); }
+
+        /* Estilos das Etiquetas de Categoria */
+        .badge-cat {
+            font-size: 0.6rem; padding: 3px 8px; border-radius: 8px;
+            text-transform: uppercase; font-weight: 700;
+            display: inline-block; margin-bottom: 6px;
+        }
+        .badge-imposto { background: #ffebee; color: #d32f2f; }
+        .badge-educacao { background: #e3f2fd; color: #003366; }
+        .badge-moradia { background: #f3e5f5; color: #7b1fa2; }
+        .badge-compras { background: #fff9c4; color: #f57f17; }
+        .badge-outros { background: #f1f5f9; color: #64748b; }
         
         .val-input {
             display: block; border: none; background: #f1f5f9; font-weight: 700;
@@ -249,6 +262,12 @@
     <div class="section-header"><h2>Contas Fixas</h2><button class="btn-add" id="add-fixa">+ Add</button></div>
     <div id="lista-fixas"></div>
 
+    <div class="section-header" style="margin-top: 30px;">
+        <h2>Cartão de Crédito</h2>
+            <button class="btn-add" id="add-cartao">+ Add</button>
+    </div>
+    <div id="lista-cartao"></div>
+
     <div class="section-header" style="margin-top: 30px;"><h2>Gastos Variáveis</h2><button class="btn-add" id="add-variavel">+ Add</button></div>
     <div id="lista-variaveis"></div>
 
@@ -275,6 +294,23 @@
             <label>Valor</label>
             <input type="text" id="campo-valor" placeholder="R$ 0,00">
         </div>
+
+        <div class="form-group">
+            <label>Categoria</label>
+            <select id="campo-categoria">
+                <option value="outros">Outros</option>
+                <option value="imposto">Imposto (IPVA, IPTU...)</option>
+                <option value="educacao">Educação (Cursos, Facul...)</option>
+                <option value="moradia">Moradia (Condomínio, Luz...)</option>
+                <option value="compras">Compras / Lazer</option>
+            </select>
+        </div>
+
+
+        <div class="form-group" id="div-parcelas">
+            <label>Quantidade de Parcelas</label>
+            <input type="number" id="campo-parcelas" value="1" min="1" placeholder="Ex: 1 (à vista)">
+        </div>
 
         <div class="form-group">
             <label id="label-data">Vencimento</label> 
@@ -324,6 +360,9 @@
     document.getElementById('campo-desc').value = "";
     document.getElementById('campo-valor').value = "";
     document.getElementById('campo-data').value = "";
+    document.getElementById('campo-parcelas').value = "1";
+    window.editandoId = null;
+        document.getElementById('div-parcelas').style.display = 'block';
 };
 
     // Máscara Monetária
@@ -372,40 +411,53 @@
     };
 
 const render = (itens) => {
-    const lists = { 
-        fixa: document.getElementById('lista-fixas'), 
-        variavel: document.getElementById('lista-variaveis'), 
-        receita: document.getElementById('lista-receitas') 
-    };
-    Object.values(lists).forEach(l => l.innerHTML = "");
-    
-    const hojeStr = new Date().toISOString().split('T')[0]; // Data de hoje (AAAA-MM-DD)
-    let tot = { rec: 0, pago: 0, ab: 0 };
+    const lists = { 
+        fixa: document.getElementById('lista-fixas'), 
+        cartao: document.getElementById('lista-cartao'),
+        variavel: document.getElementById('lista-variaveis'), 
+        receita: document.getElementById('lista-receitas') 
+    };
+    Object.values(lists).forEach(l => l.innerHTML = "");
+    
+    const hojeStr = new Date().toISOString().split('T')[0];
+    let tot = { rec: 0, pago: 0, ab: 0 };
 
-    // ORDENAÇÃO MÁGICA: Abertos no topo, Pagos no final. E depois, por data.
+window.dadosTela = itens; // Salva os itens para a edição conseguir ler
+
+    // ORDENAÇÃO: Abertos no topo, Pagos no final. E depois, por categoria e data.
     itens.sort((a, b) => {
-        if (a.pago === b.pago) {
-            // Se os dois tiverem o mesmo status, ordena pela data
-            const dataA = a.data ? new Date(a.data) : new Date('2099-01-01');
-            const dataB = b.data ? new Date(b.data) : new Date('2099-01-01');
-            return dataA - dataB;
-        }
-        // Coloca os não pagos (false) antes dos pagos (true)
-        return a.pago ? 1 : -1; 
+        if (a.pago !== b.pago) return a.pago ? 1 : -1;
+        
+        // Correção: Protege contra itens antigos que ainda não têm categoria salva
+        const catA = a.categoria || 'outros';
+        const catB = b.categoria || 'outros';
+        if (catA !== catB) return catA.localeCompare(catB); 
+        
+        return new Date(a.data) - new Date(b.data); 
     });
 
-    itens.forEach(i => {
-        // Lógica de destaque: Se for fixa, não estiver paga e a data for menor que hoje
-        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
-        
-        const card = document.createElement('div');
-        // Adiciona a classe 'vencido' se a condição for verdadeira
+itens.forEach(i => {
+        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
+
+        const card = document.createElement('div');
         card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
         
+        // 1. Dicionário de cores (fica logo acima do HTML)
+        const coresCat = { 
+            imposto: '#d32f2f',  
+            educacao: '#1976d2', 
+            moradia: '#7b1fa2',  
+            compras: '#f57f17',    
+            outros: '#64748b'    
+        };
+        const corDaTag = coresCat[i.categoria] || coresCat['outros'];
+
+        // 2. Seu HTML original exato, apenas com a injeção da categoria colorida no <p>
         card.innerHTML = `
             <div class="card-info">
                 <h4>${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida"></i>' : ''}</h4>
-                <p>${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
+                <p>${i.categoria && i.categoria !== 'outros' ? `<span style="color: ${corDaTag}; font-weight: 700; text-transform: uppercase;">${i.categoria}</span> &bull; ` : ''}${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}</p>
+                <button class="btn-excluir" style="margin-right: 12px; color: var(--azul-escuro);" onclick="window.abrirEdicao('${i.id}')"><i class="fas fa-edit"></i> Editar</button>
                 <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
             </div>
             <div class="card-actions">
@@ -413,44 +465,35 @@ const render = (itens) => {
                 ${i.type !== 'receita' ? `<button class="status-btn ${i.pago ? 'pago' : 'aberto'}" onclick="window.togStatus('${i.id}', ${i.pago})">${i.pago ? 'PAGO' : 'ABERTO'}</button>` : ''}
             </div>
         `;
-        lists[i.type]?.appendChild(card);
-        
-        if (i.type === 'receita') tot.rec += i.valor; 
-        else if (i.pago) tot.pago += i.valor; 
-        else tot.ab += i.valor;
+        
+        lists[i.type]?.appendChild(card);
+        
+        if (i.type === 'receita') tot.rec += i.valor; 
+        else if (i.pago) tot.pago += i.valor; 
+        else tot.ab += i.valor;
+    });
 
-    // ... dentro da função render, logo após o loop de itens e cálculos de totais ...
+    const totalDespesas = tot.pago + tot.ab;
+    const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
 
-const totalDespesas = tot.pago + tot.ab;
-const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
+    const barra = document.getElementById('progresso-barra');
+    const textoPorcentagem = document.getElementById('progresso-porcentagem');
 
-// Atualiza a largura da barra e o texto da porcentagem
-const barra = document.getElementById('progresso-barra');
-const textoPorcentagem = document.getElementById('progresso-porcentagem');
+    if (barra && textoPorcentagem) {
+        barra.style.width = `${porcentagem}%`;
+        textoPorcentagem.innerText = `${porcentagem}%`;
+        barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
+        if (porcentagem === 100) {
+            barra.classList.add('progresso-completo');
+        } else {
+            barra.classList.remove('progresso-completo');
+        }
+    }
 
-if (barra && textoPorcentagem) {
-    barra.style.width = `${porcentagem}%`;
-    textoPorcentagem.innerText = `${porcentagem}%`;
-
-    // Aplica a cor básica
-    barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
-
-    // Lógica do 100%
-    if (porcentagem === 100) {
-        barra.classList.add('progresso-completo');
-    } else {
-        barra.classList.remove('progresso-completo');
-    }
-}
-
-    });
-
-    
-    // Atualização dos stats principais (mantenha o que já existe abaixo)
-    document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
-    document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
-    document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
-    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
+    document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
+    document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
+    document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
+    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
 };
 
 
@@ -470,6 +513,25 @@ if (barra && textoPorcentagem) {
             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, id));
         }
     };
+
+    window.editandoId = null;
+    window.abrirEdicao = (id) => {
+        const item = window.dadosTela.find(x => x.id === id);
+        if (!item) return;
+
+        window.editandoId = id;
+        modalTipo = item.type;
+        document.getElementById('modal-titulo').innerText = "Editar Registro";
+        
+        document.getElementById('campo-desc').value = item.desc;
+        document.getElementById('campo-valor').value = formatMoney(item.valor);
+        document.getElementById('campo-categoria').value = item.categoria || 'outros';
+        document.getElementById('campo-data').value = item.data || '';
+        
+        // Esconde o campo de parcelas durante a edição para evitar confusão
+        document.getElementById('div-parcelas').style.display = 'none'; 
+        document.getElementById('modal').style.display = 'flex';
+    };
 
     // Tornar funções globais para o HTML acessar (necessário em type="module")
     window.updateVal = async (id, v) => {
@@ -497,39 +559,69 @@ if (barra && textoPorcentagem) {
         }
     };
 
-    // Evento de Salvar
+   // Evento de Salvar
+// Evento de Salvar (Criação e Edição)
 document.getElementById('btn-save').onclick = async () => {
-    if (!user) return;
-    const desc = document.getElementById('campo-desc').value;
-    const valorRaw = document.getElementById('campo-valor').value;
-    const valor = parseMoney(valorRaw);
-    const data = document.getElementById('campo-data').value;
-    const dataFinal = data || new Date().toISOString().split('T')[0];
+    if (!user) return;
+    const categoria = document.getElementById('campo-categoria').value;
+    const desc = document.getElementById('campo-desc').value;
+    const valorRaw = document.getElementById('campo-valor').value;
+    const valor = parseMoney(valorRaw);
+    const data = document.getElementById('campo-data').value;
+    const dataFinal = data || new Date().toISOString().split('T')[0];
+    const parcelas = parseInt(document.getElementById('campo-parcelas').value) || 1;
 
-    if (!desc || valor <= 0) {
-        alert("Por favor, preencha a descrição e um valor válido.");
-        return;
-    }
+    if (!desc || valor <= 0) {
+        alert("Por favor, preencha a descrição e um valor válido.");
+        return;
+    }
 
-    try {
-        const id = crypto.randomUUID();
+    document.getElementById('loading-screen').style.display = 'flex';
+
+    try {
         const period = getPeriodoId(dataView);
-        const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, id);
-        
-        await setDoc(ref, { 
-            type: modalTipo, 
-            desc, 
-            valor,  
-            data: dataFinal,
-            pago: (modalTipo === 'receita'), // Se for receita, entra como true (pago) 
-            createdAt: new Date().toISOString() 
-        });
-        
-        fecharModal();
-    } catch (e) {
-        alert("Erro ao salvar no banco de dados.");
-        console.error(e);
-    }
+
+        if (window.editandoId) {
+            // MODO DE EDIÇÃO: Apenas atualiza o registro atual
+            const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${period}`, window.editandoId);
+            await updateDoc(ref, { 
+                desc: desc, 
+                categoria: categoria,
+                valor: valor, 
+                data: dataFinal 
+            });
+        } else {
+            // MODO DE CRIAÇÃO: Faz o loop das parcelas normalmente
+            for (let i = 1; i <= parcelas; i++) {
+                const descFinal = parcelas > 1 ? `${desc} ${i}/${parcelas}` : desc;
+                let dataParcela = new Date(dataFinal + 'T12:00:00'); 
+                dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
+                const dataFormatada = dataParcela.toISOString().split('T')[0];
+                const periodId = `${dataParcela.getMonth() + 1}-${dataParcela.getFullYear()}`;
+                const id = crypto.randomUUID();
+                const ref = doc(db, 'artifacts', appId, 'public', 'data', `fin_${periodId}`, id);
+                
+                await setDoc(ref, { 
+                    type: modalTipo, 
+                    desc: descFinal, 
+                    categoria: categoria,
+                    valor: valor, 
+                    data: dataFormatada,
+                    pago: (modalTipo === 'receita'), 
+                    createdAt: new Date().toISOString() 
+                });
+            }
+        }
+        
+        fecharModal();
+        sync(); 
+        
+    } catch (e) {
+        alert("Erro ao salvar no banco de dados.");
+        console.error(e);
+    } finally {
+        document.getElementById('loading-screen').style.display = 'none';
+    }
 };
 
     document.getElementById('btn-prev').onclick = () => { dataView.setMonth(dataView.getMonth() - 1); sync(); };
@@ -546,7 +638,7 @@ document.getElementById('btn-save').onclick = async () => {
     if (t === 'fixa') {
         labelData.innerText = "Vencimento";
     } else {
-        labelData.innerText = "Data do Gasto";
+        labelData.innerText = "Data do Gasto/Recebimento";
     }
 
     // 3. Preenche automaticamente com a data de HOJE
@@ -558,51 +650,72 @@ document.getElementById('btn-save').onclick = async () => {
     document.getElementById('modal').style.display = 'flex'; 
 };
     document.getElementById('add-fixa').onclick = () => abrir('fixa');
+    document.getElementById('add-cartao').onclick = () => abrir('cartao');
     document.getElementById('add-variavel').onclick = () => abrir('variavel');
     document.getElementById('add-receita').onclick = () => abrir('receita');
     document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
 
 
-    document.getElementById('btn-clone').onclick = async () => {
-    if (!user) return;
-    
-    const dAnt = new Date(dataView); 
-    dAnt.setMonth(dAnt.getMonth() - 1);
-    
-    const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dAnt)}`));
-    
-    if (snap.empty) return alert("Nenhum dado encontrado no mês anterior.");
-    
-    let c = 0;
-    // Pegamos o ano e mês atual da visualização para a nova data
-    const anoAtual = dataView.getFullYear();
-    const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
+   document.getElementById('btn-clone').onclick = async () => {
+    if (!user) return;
+    
+    const periodAtual = getPeriodoId(dataView);
+    const dAnt = new Date(dataView); 
+    dAnt.setMonth(dAnt.getMonth() - 1);
+    const periodAnterior = getPeriodoId(dAnt);
 
-    for (const d of snap.docs) {
-        const dataOriginal = d.data();
-        
-        // Só importamos se for fixa ou receita
-        if (dataOriginal.type === 'fixa' || dataOriginal.type === 'receita') {
-            let novaData = dataOriginal.data;
+    // 1. Pega o que já existe no mês ATUAL para evitar duplicados
+    const snapAtual = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${periodAtual}`));
+    const descricoesExistentes = snapAtual.docs.map(d => d.data().desc);
 
-            // Se existir uma data preenchida, ajustamos para o mês atual
-            if (dataOriginal.data) {
-                const diaOriginal = dataOriginal.data.split('-')[2]; // Pega o dia (ex: 15)
-                novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
-            }
+    // 2. Pega os dados do mês anterior
+    const snapAnterior = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', `fin_${periodAnterior}`));
+    
+    if (snapAnterior.empty) return alert("Nenhum dado encontrado no mês anterior.");
+    
+    let contador = 0;
+    const anoAtual = dataView.getFullYear();
+    const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
 
-            const nid = crypto.randomUUID();
-            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${getPeriodoId(dataView)}`, nid), { 
-                ...dataOriginal, 
-                id: nid, 
-                data: novaData, // Aqui entra a data atualizada
-                pago: false,
-                createdAt: new Date().toISOString() 
-            });
-            c++;
-        }
-    }
-    alert(c + " itens importados com datas atualizadas!");
+    for (const d of snapAnterior.docs) {
+        const dataOriginal = d.data();
+        
+        // Regra: Importar apenas Fixas, Receitas e Cartões (Ignora Variáveis)
+        const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
+        
+        if (categoriasParaImportar.includes(dataOriginal.type)) {
+            
+            // TRAVA 1: É compra parcelada? (Verifica se o nome termina com algo como " 1/2" ou " 5/10")
+            // Se for parcelada, pula, porque o sistema já lançou ela no futuro na hora de salvar.
+            const isParcela = /\d+\/\d+$/.test(dataOriginal.desc);
+            if (isParcela) continue;
+
+            // TRAVA 2: Antiduplicação: Se o nome já existe neste mês, pula para o próximo
+            if (descricoesExistentes.includes(dataOriginal.desc)) continue;
+
+            let novaData = dataOriginal.data;
+            if (dataOriginal.data) {
+                const diaOriginal = dataOriginal.data.split('-')[2];
+                novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
+            }
+
+            const nid = crypto.randomUUID();
+            await setDoc(doc(db, 'artifacts', appId, 'public', 'data', `fin_${periodAtual}`, nid), { 
+                ...dataOriginal, 
+                id: nid, 
+                data: novaData,
+                pago: (dataOriginal.type === 'receita'), // Receita entra como pago, os outros não
+                createdAt: new Date().toISOString() 
+            });
+            contador++;
+        }
+    }
+    
+    if (contador === 0) {
+        alert("Nenhum item novo para importar! As contas recorrentes já estão aqui e as parceladas já foram lançadas automaticamente.");
+    } else {
+        alert(contador + " itens importados com sucesso!");
+    }
 };
 
     startAuth();
