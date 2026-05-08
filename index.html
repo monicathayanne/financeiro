@@ -405,6 +405,20 @@
     </div>
 </div>
 
+<div id="modal-sair-app" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-sign-out-alt login-icon" style="color: #FF8C00; font-size: 2rem; margin-bottom: 10px;"></i>
+        
+        <h3 style="color: #003366; margin-bottom: 10px;">Sair do Sistema</h3>
+        <p style="color: #444; margin-bottom: 25px;">Tem certeza de que deseja sair da sua conta?</p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="btn-cancelar-sair" class="btn-login" style="background: transparent; color: #003366; border: 1px solid #003366; width: auto; padding: 8px 25px;">Cancelar</button>
+            <button id="btn-confirmar-sair" class="btn-login" style="background: #FF8C00; border: none; width: auto; padding: 8px 25px;">Sim, sair</button>
+        </div>
+    </div>
+</div>
+
 <header>
     <div class="user-top-bar">
         <div class="user-email-info" id="user-email-display">
@@ -676,11 +690,31 @@ btnEnviarRecuperacao.addEventListener('click', async () => {
 
     document.getElementById('btn-entrar').onclick = logar;
 
-    document.getElementById('btn-sair').onclick = () => {
-        if(confirm("Deseja sair do sistema?")) {
-            signOut(auth);
-        }
-    };
+// Elementos do Modal de Sair
+const modalSairApp = document.getElementById('modal-sair-app');
+const btnSairHeader = document.getElementById('btn-sair'); // O botão Sair lá do cabeçalho
+const btnCancelarSair = document.getElementById('btn-cancelar-sair');
+const btnConfirmarSair = document.getElementById('btn-confirmar-sair');
+
+// 1. Quando clicar no Sair do topo, apenas abre o modal
+btnSairHeader.addEventListener('click', () => {
+    modalSairApp.style.display = 'flex';
+});
+
+// 2. Se clicar em Cancelar, fecha o modal e não faz nada
+btnCancelarSair.addEventListener('click', () => {
+    modalSairApp.style.display = 'none';
+});
+
+// 3. Se clicar em "Sim, sair", executa o Firebase e fecha a tela
+btnConfirmarSair.addEventListener('click', async () => {
+    try {
+        await signOut(auth); // Função do Firebase para deslogar
+        modalSairApp.style.display = 'none'; // Fecha o modal
+    } catch (error) {
+        mostrarAlerta("Erro", "Não foi possível sair: " + error.message);
+    }
+});
 
     // Função para substituir o alert()
 function mostrarAlerta(titulo, mensagem) {
