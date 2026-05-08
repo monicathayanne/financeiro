@@ -406,6 +406,22 @@
     </div>
 </div>
 
+
+<div id="modal-confirmar-exclusao" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-exclamation-triangle login-icon" style="color: var(--vermelho-erro); font-size: 2.5rem; margin-bottom: 15px;"></i>
+        
+        <h3 style="color: var(--azul-escuro); margin-bottom: 10px;">Confirmar Exclusão</h3>
+        <p id="texto-confirmar-exclusao" style="color: #444; margin-bottom: 25px;">Tem certeza que deseja excluir?</p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="btn-cancelar-exclusao" class="btn-login" style="background: transparent; color: var(--azul-escuro); border: 1px solid var(--azul-escuro); width: auto; padding: 8px 25px;">Cancelar</button>
+            <button id="btn-confirmar-exclusao" class="btn-login" style="background: var(--vermelho-erro); border: none; width: auto; padding: 8px 25px; color: white;">Sim, excluir</button>
+        </div>
+    </div>
+</div>
+
+
 <div id="modal-sair-app" class="modal-overlay" style="display: none; z-index: 10000;">
     <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
         <i class="fas fa-sign-out-alt login-icon" style="color: #FF8C00; font-size: 2rem; margin-bottom: 10px;"></i>
@@ -927,15 +943,14 @@ async function carregarCategorias(uid) {
             `;
 
             // Ação da Lixeirinha
-            itemDiv.querySelector('.btn-excluir-cat').onclick = async () => {
-                if(confirm(`Excluir a categoria "${cat.nome}" permanentemente?`)) {
-                    await deleteDoc(doc(db, 'usuarios', uid, 'categorias', cat.id));
-                    carregarCategorias(uid); // Recarrega a tela instantaneamente
-                }
+            itemDiv.querySelector('.btn-excluir-cat').onclick = () => {
+                window.idParaExcluir = cat.id;
+                window.tipoParaExcluir = 'categoria';
+                document.getElementById('texto-confirmar-exclusao').innerText = `Excluir a categoria "${cat.nome}" permanentemente?`;
+                document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
             };
             listaGerenciar.appendChild(itemDiv);
         });
-
     } catch (error) {
         console.error("Erro ao carregar categorias:", error);
     }
@@ -958,7 +973,7 @@ btnCancelarCategoria.addEventListener('click', () => {
 // Salvar a nova categoria com a cor
 btnSalvarCategoria.addEventListener('click', async () => {
     const nomeCategoria = inputNovaCategoria.value.trim();
-    if (!nomeCategoria) return alert("Digite um nome para a categoria!");
+    if (!nomeCategoria) return mostrarAlerta("Atenção!" , "Digite um nome para a categoria!");
 
     try {
         btnSalvarCategoria.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
@@ -1194,15 +1209,52 @@ const render = (itens) => {
         } catch (e) { console.error("Erro ao alternar status:", e); }
     };
 
-    window.excluir = async (id) => {
-        if (!user) return;
-        if (confirm("Tem certeza que deseja remover este registro?")) {
-            try {
-                const period = getPeriodoId(dataView);
-                await deleteDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id));
-            } catch (e) { console.error("Erro ao excluir:", e); }
-        }
+    window.excluir = (id) => {
+    if (!user) return;
+    window.idParaExcluir = id;
+    window.tipoParaExcluir = 'registro';
+    document.getElementById('texto-confirmar-exclusao').innerText = "Tem certeza que deseja remover este registro?";
+    document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
     };
+
+// =========================================================
+// PASSO 3: LÓGICA DO MODAL DE EXCLUSÃO
+// =========================================================
+window.idParaExcluir = null;
+window.tipoParaExcluir = null;
+
+// 1. Se clicar em Cancelar, apenas fecha
+document.getElementById('btn-cancelar-exclusao').addEventListener('click', () => {
+    document.getElementById('modal-confirmar-exclusao').style.display = 'none';
+    window.idParaExcluir = null;
+    window.tipoParaExcluir = null;
+});
+
+// 2. Se clicar em "Sim, excluir", o Firebase age
+document.getElementById('btn-confirmar-exclusao').addEventListener('click', async () => {
+    if (!window.idParaExcluir) return;
+
+    try {
+        if (window.tipoParaExcluir === 'registro') {
+            const period = getPeriodoId(dataView);
+            await deleteDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, window.idParaExcluir));
+            sync(); // Faz a despesa sumir da tela na hora
+            
+        } else if (window.tipoParaExcluir === 'categoria') {
+            await deleteDoc(doc(db, 'usuarios', user.uid, 'categorias', window.idParaExcluir));
+            carregarCategorias(user.uid); // Faz a categoria sumir do gerenciador na hora
+        }
+        
+        // Fecha o modal e limpa as variáveis
+        document.getElementById('modal-confirmar-exclusao').style.display = 'none'; 
+        window.idParaExcluir = null;
+        window.tipoParaExcluir = null;
+        
+    } catch (error) {
+        mostrarAlerta("Erro", "Não foi possível excluir: " + error.message);
+    }
+});
+
 
     window.editandoId = null;
     window.abrirEdicao = (id) => {
