@@ -1098,8 +1098,16 @@ document.getElementById('bloco-notas-mes').oninput = (e) => {
         try {
             await setDoc(notaRef, { texto: e.target.value }, { merge: true });
             status.innerText = "Salvo automaticamente!";
+            
+            // Atualiza a bolinha laranja em tempo real
+            const indicador = document.getElementById('indicador-nota');
+            if (indicador) {
+                indicador.style.display = e.target.value.trim() !== "" ? 'block' : 'none';
+            }
+
             setTimeout(() => { status.innerText = ""; }, 2000);
         } catch (error) {
+            console.error("Erro ao salvar nota:", error);
             status.innerText = "Erro ao salvar!";
         }
     }, 1500);
