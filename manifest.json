@@ -1,16 +1,29 @@
 {
   "name": "Controle Financeiro",
   "short_name": "Finanças",
+  "description": "Controle financeiro pessoal integrada com Firebase.",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#003366",
   "theme_color": "#003366",
   "icons": [
-        {
-          "src": "./icone-dinheiro.svg",
-          "sizes": "any",
-          "type": "image/svg+xml",
-          "purpose": "any maskable"
-        }
-      ]
+    {
+      "src": "./icone-dinheiro.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
