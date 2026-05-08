@@ -107,6 +107,18 @@
     border-color: #FF8C00;
 }
 
+
+#btn-abrir-notas {
+    color: var(--azul-escuro); /* Texto azul para aparecer no fundo branco */
+    border-color: rgba(0, 51, 102, 0.2);
+    background: #f1f5f9;
+}
+
+#btn-abrir-notas:hover {
+    color: #FF8C00;
+    background: #003366; 
+}
+
         .container {
             max-width: 600px; width: 100%;
             margin: -40px auto 0;
@@ -468,6 +480,7 @@
         </div>
     </div>
 
+
     <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--azul-escuro); margin-bottom: 8px; text-transform: uppercase;">
         <span>Progresso de Pagamentos</span>
@@ -484,6 +497,12 @@
         <h3 id="mes-label">...</h3>
         <button id="btn-next"><i class="fas fa-chevron-right"></i></button>
     </div>
+
+    <button id="btn-abrir-notas" class="btn-sair-novo" style="margin: 10px auto; position: relative;">
+        <i class="fas fa-sticky-note"></i> 
+        Notas
+        <span id="indicador-nota" style="display: none; position: absolute; top: -5px; right: -2px; width: 8px; height: 8px; background-color: #FF8C00; border-radius: 50%; border: 2px solid var(--azul-escuro);"></span>
+    </button>
 
     <div class="section-header"><h2>Contas Fixas</h2><button class="btn-add" id="add-fixa">+ Add</button></div>
     <div id="lista-fixas"></div>
@@ -591,12 +610,30 @@
     </div>
 </div>
 
+<div id="modal-notas" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="width: 90%; max-width: 400px; padding: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: var(--azul-escuro); margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-edit" style="color: var(--laranja);"></i> Notas de <span id="nome-mes-nota"></span>
+            </h3>
+            <button id="fechar-modal-notas" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        </div>
+
+        <textarea id="bloco-notas-mes" placeholder="Anote algo importante sobre este mês..." 
+            style="width: 100%; min-height: 150px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; font-family: inherit; font-size: 0.9rem; resize: none; outline: none; margin-bottom: 10px;"></textarea>
+        
+        <div id="status-salvamento-notas" style="font-size: 0.7rem; color: #94a3b8; text-align: right; height: 15px;"></div>
+
+        <button id="btn-fechar-notas-confirmar" class="btn-login" style="margin-top: 15px;">Pronto</button>
+    </div>
+</div>
+
 
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDocs, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyDu_p2cO3FIHEMstdKtirMtP5D7an-p_tw",
@@ -784,7 +821,12 @@ document.getElementById('btn-fechar-alerta').addEventListener('click', () => {
 
 
     // --- 2. UTILITÁRIOS ---
-    const formatMoney = (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    // Versão protegida contra valores indefinidos
+    const formatMoney = (v) => {
+        const valorSeguro = v || 0; // Se v for undefined ou null, ele usa 0
+        return valorSeguro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+    
     const parseMoney = (s) => parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
     const getPeriodoId = (d) => `${d.getMonth() + 1}-${d.getFullYear()}`;
 
@@ -815,9 +857,9 @@ document.getElementById('btn-fechar-alerta').addEventListener('click', () => {
         e.target.value = "R$ " + v;
     };
 
-// =========================================================
+
 // MÓDULO DE CATEGORIAS DINÂMICAS (COM CORES E LIMITES)
-// =========================================================
+
 
 const campoCategoria = document.getElementById('campo-categoria');
 const btnAddCategoria = document.getElementById('btn-add-categoria');
@@ -992,6 +1034,77 @@ btnSalvarCategoria.addEventListener('click', async () => {
     }
 });
 
+// =========================================================
+// MÓDULO DE BLOCO DE NOTAS MENSAL
+// =========================================================
+
+let timeoutNotas = null;
+
+// Função para buscar a nota salva no Firebase
+async function carregarNotaMensal(uid) {
+    if (!uid) return;
+    const period = getPeriodoId(dataView); 
+    const notaRef = doc(db, 'usuarios', uid, 'financas', 'meses', `fin_${period}`, 'anotacoes_texto');
+    const indicador = document.getElementById('indicador-nota');
+    
+    try {
+        const docSnap = await getDoc(notaRef);
+        const campoNota = document.getElementById('bloco-notas-mes');
+        
+        if (docSnap.exists() && docSnap.data().texto.trim() !== "") {
+            campoNota.value = docSnap.data().texto;
+            if(indicador) indicador.style.display = 'block'; // Mostra a bolinha
+        } else {
+            campoNota.value = "";
+            if(indicador) indicador.style.display = 'none'; // Esconde a bolinha
+        }
+    } catch (e) {
+        console.error("Erro ao carregar nota:", e);
+    }
+}
+
+// Lógica de Abrir e Fechar o Modal
+const modalNotas = document.getElementById('modal-notas');
+const btnAbrirNotas = document.getElementById('btn-abrir-notas');
+const btnFecharX = document.getElementById('fechar-modal-notas');
+const btnPronto = document.getElementById('btn-fechar-notas-confirmar');
+
+btnAbrirNotas.onclick = () => {
+    // Atualiza o título do modal com o mês que você está vendo
+    const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    document.getElementById('nome-mes-nota').innerText = meses[dataView.getMonth()];
+    
+    modalNotas.style.display = 'flex';
+    carregarNotaMensal(user.uid);
+};
+
+// Fechar modal
+[btnFecharX, btnPronto].forEach(btn => {
+    btn.onclick = () => { modalNotas.style.display = 'none'; };
+});
+
+// Auto-save (Salva enquanto você digita)
+document.getElementById('bloco-notas-mes').oninput = (e) => {
+    const status = document.getElementById('status-salvamento-notas');
+    status.innerText = "Digitando...";
+
+    clearTimeout(timeoutNotas);
+
+    timeoutNotas = setTimeout(async () => {
+        if (!user) return;
+        const period = getPeriodoId(dataView);
+        const notaRef = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, 'anotacoes_texto');
+        
+        try {
+            await setDoc(notaRef, { texto: e.target.value }, { merge: true });
+            status.innerText = "Salvo automaticamente!";
+            setTimeout(() => { status.innerText = ""; }, 2000);
+        } catch (error) {
+            status.innerText = "Erro ao salvar!";
+        }
+    }, 1500);
+};
+
     // --- 3. SINCRONIZAÇÃO COM O BANCO ---
     let unsub = null;
     const sync = () => {
@@ -1092,13 +1205,13 @@ const render = (itens) => {
         `;
         lists[i.type]?.appendChild(card);
         
-        if (i.type === 'receita') tot.rec += i.valor; 
-        else if (i.pago) tot.pago += i.valor; 
-        else tot.ab += i.valor;
+        if (i.type === 'receita') tot.rec += (i.valor || 0);
+        else if (i.pago) tot.pago += (i.valor || 0);
+        else tot.ab += (i.valor || 0);
 
         // Soma os valores para o Gráfico usando o nome Corrigido!
         if (i.type !== 'receita') {
-            somaCategorias[catNome] = (somaCategorias[catNome] || 0) + i.valor;
+            somaCategorias[catNome] = (somaCategorias[catNome] || 0) + (i.valor || 0);
         }
     });
 
@@ -1217,9 +1330,9 @@ const render = (itens) => {
     document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
     };
 
-// =========================================================
+
 // PASSO 3: LÓGICA DO MODAL DE EXCLUSÃO
-// =========================================================
+
 window.idParaExcluir = null;
 window.tipoParaExcluir = null;
 
@@ -1453,6 +1566,9 @@ window.addEventListener('click', (event) => {
             signOut(auth);
         }
     };
+
+
+
 </script>
 <script>
   if ('serviceWorker' in navigator) {
