@@ -2,8 +2,10 @@
   "name": "Controle Financeiro",
   "short_name": "Finanças",
   "description": "Controle financeiro pessoal integrada com Firebase.",
+  "id": "/financeiro/",
   "start_url": "index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#003366",
   "theme_color": "#003366",
   "icons": [
