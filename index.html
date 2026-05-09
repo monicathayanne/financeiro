@@ -448,6 +448,7 @@
     </div>
 </div>
 
+
 <header>
     <div class="user-top-bar">
         <div class="user-email-info" id="user-email-display">
@@ -498,11 +499,20 @@
         <button id="btn-next"><i class="fas fa-chevron-right"></i></button>
     </div>
 
-    <button id="btn-abrir-notas" class="btn-sair-novo" style="margin: 10px auto; position: relative;">
-        <i class="fas fa-sticky-note"></i> 
-        Notas
+    <div style="display: flex; justify-content: center; gap: 10px; margin: 15px auto; flex-wrap: wrap;">
+    <button id="btn-abrir-notas" class="btn-sair-novo" style="position: relative; margin: 0;">
+        <i class="fas fa-sticky-note"></i> Notas
         <span id="indicador-nota" style="display: none; position: absolute; top: -5px; right: -2px; width: 8px; height: 8px; background-color: #FF8C00; border-radius: 50%; border: 2px solid var(--azul-escuro);"></span>
     </button>
+
+    <button id="btn-abrir-comparativo" class="btn-sair-novo" style="margin: 0;">
+        <i class="fas fa-chart-line"></i> Comparativo
+    </button>
+
+    <button id="btn-gerar-pdf" class="btn-sair-novo" style="margin: 0; background-color: #27ae60; color: white; border: none;">
+        <i class="fas fa-file-pdf"></i> PDF
+    </button>
+    </div>
 
     <div class="section-header"><h2>Contas Fixas</h2><button class="btn-add" id="add-fixa">+ Add</button></div>
     <div id="lista-fixas"></div>
@@ -628,6 +638,21 @@
     </div>
 </div>
 
+<div id="modal-comparativo" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="width: 95%; max-width: 500px; padding: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: var(--azul-escuro); margin: 0;"><i class="fas fa-balance-scale"></i> Análise Comparativa</h3>
+            <button id="fechar-modal-comp" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div id="conteudo-relatorio" style="display: flex; flex-direction: column; gap: 15px;">
+            <p style="text-align: center; color: #666;">Processando dados...</p>
+        </div>
+      
+        <button id="btn-fechar-comp-pronto" class="btn-login" style="margin-top: 20px;">Entendido</button>
+    </div>
+</div>
+
 
 
 <script type="module">
@@ -701,8 +726,10 @@ btnCadastrar.addEventListener('click', async () => {
         } else {
             mostrarAlerta("Erro ao criar conta: " + error.message);
         }
-    }
+    }  
 });
+
+
 
     onAuthStateChanged(auth, (u) => {
     const loginScreen = document.getElementById('login-screen');
@@ -1112,6 +1139,129 @@ document.getElementById('bloco-notas-mes').oninput = (e) => {
         }
     }, 1500);
 };
+
+
+const modalComp = document.getElementById('modal-comparativo');
+
+document.getElementById('btn-abrir-comparativo').onclick = async () => {
+    modalComp.style.display = 'flex';
+    const container = document.getElementById('conteudo-relatorio');
+    container.innerHTML = '<p style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Analisando meses...</p>';
+
+    // 1. Identificar Mês Atual e Anterior
+    const dataAnterior = new Date(dataView.getFullYear(), dataView.getMonth() - 1, 1);
+    const periodAtual = getPeriodoId(dataView);
+    const periodAnterior = getPeriodoId(dataAnterior);
+
+    try {
+        // 2. Buscar dados de ambos no Firebase
+        const [snapAtual, snapAnterior] = await Promise.all([
+            getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`)),
+            getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`))
+        ]);
+
+        const totalizar = (snap) => {
+            let total = 0, cartao = 0, cats = {};
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (d.type !== 'receita') {
+                    total += (d.valor || 0);
+                    const cat = d.categoria || 'Outros';
+                    cats[cat] = (cats[cat] || 0) + (d.valor || 0);
+                    if (cat.toLowerCase().includes('cartão') || cat.toLowerCase().includes('cartao')) {
+                        cartao += (d.valor || 0);
+                    }
+                }
+            });
+            return { total, cartao, cats };
+        };
+
+        const atual = totalizar(snapAtual);
+        const anterior = totalizar(snapAnterior);
+
+        // 3. Gerar Insight Principal (Card do Topo)
+        const diffTotal = atual.total - anterior.total;
+        const percTotal = anterior.total > 0 ? ((diffTotal / anterior.total) * 100).toFixed(0) : 0;
+        
+        let htmlPrincipal = `
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border-left: 5px solid ${diffTotal > 0 ? '#ef4444' : '#10b981'};">
+                <span style="font-size: 0.85rem; color: #64748b;">Gastos Totais</span>
+                <h2 style="margin: 5px 0; color: var(--azul-escuro);">${formatMoney(atual.total)}</h2>
+                <p style="margin: 0; font-size: 0.85rem; color: ${diffTotal > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">
+                    ${diffTotal > 0 ? '↑ Aumentou' : '↓ Reduziu'} ${Math.abs(percTotal)}% em relação ao mês anterior.
+                </p>
+            </div>
+        `;
+
+        // Insight de Cartão
+        if (anterior.cartao > 0) {
+            const diffCartao = atual.cartao - anterior.cartao;
+            htmlPrincipal += `<p style="font-size: 0.9rem; color: #444; margin-top:10px;"><i class="fas fa-credit-card"></i> O uso do cartão <b>${diffCartao > 0 ? 'subiu' : 'caiu'}</b> ${formatMoney(Math.abs(diffCartao))}.</p>`;
+        }
+
+        // --- Lógica Blindada de Categorias ---
+        const catsAtual = Object.keys(atual.cats);
+        const catsAnterior = Object.keys(anterior.cats);
+        const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        const comuns = catsAtual.filter(c => catsAnterior.some(ant => normalizar(ant) === normalizar(c)));
+        const novas = catsAtual.filter(c => !catsAnterior.some(ant => normalizar(ant) === normalizar(c)));
+
+        let htmlCategorias = "";
+
+        // Bloco de Evolução (Comuns)
+        if (comuns.length > 0) {
+            htmlCategorias += `
+                <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: bold;">Evolução de Gastos:</span>
+                    ${comuns.map(c => {
+                        const nomeOriginalAnt = catsAnterior.find(ant => normalizar(ant) === normalizar(c));
+                        const vAnt = anterior.cats[nomeOriginalAnt];
+                        const vAtu = atual.cats[c];
+                        const d = vAtu - vAnt;
+                        const p = vAnt > 0 ? ((d / vAnt) * 100).toFixed(0) : 100;
+                        return `
+                            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                <span style="font-size: 0.9rem; color: #444;">${c}</span>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.9rem; font-weight: bold; color: var(--azul-escuro);">${formatMoney(vAtu)}</div>
+                                    <div style="font-size: 0.75rem; font-weight:600; color: ${d > 0 ? '#ef4444' : '#10b981'};">
+                                        ${d > 0 ? '↑' : '↓'} ${Math.abs(p)}%
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('')}
+                </div>`;
+        }
+
+        // Bloco de Gastos Novos
+        if (novas.length > 0) {
+            htmlCategorias += `
+                <div style="margin-top: 15px; background: #f1f5f9; padding: 10px; border-radius: 10px;">
+                    <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: bold;">Categorias Novas:</span>
+                    ${novas.map(c => `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; margin-top: 5px;">
+                            <span>${c}</span>
+                            <b>${formatMoney(atual.cats[c])}</b>
+                        </div>`).join('')}
+                </div>`;
+        }
+
+        container.innerHTML = htmlPrincipal + htmlCategorias;
+
+    } catch (e) {
+        console.error("Erro Relatório:", e);
+        container.innerHTML = '<p>Erro ao gerar relatório. Tente novamente.</p>';
+    }
+};
+
+// Lógica de fechar modal
+[document.getElementById('fechar-modal-comp'), document.getElementById('btn-fechar-comp-pronto')].forEach(btn => {
+    btn.onclick = () => modalComp.style.display = 'none';
+    
+});
+
+
 
     // --- 3. SINCRONIZAÇÃO COM O BANCO ---
     let unsub = null;
