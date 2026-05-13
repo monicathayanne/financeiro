@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-const CACHE_NAME = 'financas-v8.7';
-=======
-const CACHE_NAME = 'financas-v8.6';
->>>>>>> d6a4352c438858bd1692b6a52753100e07438e96
+const CACHE_NAME = 'financas-v8.8';
 const assets = [
   './',
   './index.html',

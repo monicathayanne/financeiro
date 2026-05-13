@@ -653,17 +653,18 @@
 </div>
 
 <div id="modal-comparativo" class="modal-overlay" style="display: none; z-index: 10000;">
-    <div class="login-card modal-card" style="width: 95%; max-width: 500px; padding: 25px;">
+    <div class="login-card modal-card" style="width: 95%; max-width: 500px; padding: 25px; max-height: 90vh; display: flex; flex-direction: column;">
+        
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h3 style="color: var(--azul-escuro); margin: 0;"><i class="fas fa-balance-scale"></i> Análise Comparativa</h3>
             <button id="fechar-modal-comp" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
         </div>
         
-        <div id="conteudo-relatorio" style="display: flex; flex-direction: column; gap: 15px;">
+        <div id="conteudo-relatorio" style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 5px; flex: 1;">
             <p style="text-align: center; color: #666;">Processando dados...</p>
         </div>
       
-        <button id="btn-fechar-comp-pronto" class="btn-login" style="margin-top: 20px;">Entendido</button>
+        <button id="btn-fechar-comp-pronto" class="btn-login" style="margin-top: 20px; flex-shrink: 0;">Entendido</button>
     </div>
 </div>
 
