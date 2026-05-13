@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <style>
         :root {
             --azul-escuro: #003366;
@@ -1332,7 +1333,7 @@ const render = (itens) => {
     let somaCategorias = {}; // Agora é um objeto vazio que se preenche sozinho
 
     itens.forEach(i => {
-        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
+        const isVencido = (i.type === 'fixa' || i.type === 'cartao') && !i.pago && i.data && i.data < hojeStr;
 
         // --- PONTE DE LEGADO: Traduz os nomes antigos para os novos ---
         const mapaLegado = {
@@ -1462,7 +1463,7 @@ const render = (itens) => {
     document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
     document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
     document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
-    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
+    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago);
 };
 
     // --- 5. FUNÇÕES GLOBAIS E EDIÇÃO ---
@@ -1666,50 +1667,72 @@ document.getElementById('btn-confirmar-exclusao').addEventListener('click', asyn
     document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
 
     document.getElementById('btn-clone').onclick = async () => {
-        if (!user) return;
+    if (!user) return;
+    const periodAtual = getPeriodoId(dataView);
+    const dAnt = new Date(dataView); 
+    dAnt.setMonth(dAnt.getMonth() - 1);
+    const periodAnterior = getPeriodoId(dAnt);
+
+    // 1. Puxamos o que JÁ EXISTE no mês atual para comparar
+    const snapAtual = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`));
+    const descricoesNoMes = snapAtual.docs.map(d => d.data().desc);
+
+    const snapAnterior = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`));
+    if (snapAnterior.empty) return mostrarAlerta("Nenhum dado no mês anterior.");
+    
+    let contador = 0;
+    const anoAtual = dataView.getFullYear();
+    const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
+
+    for (const d of snapAnterior.docs) {
+        const dataOriginal = d.data();
+        const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
         
-        const periodAtual = getPeriodoId(dataView);
-        const dAnt = new Date(dataView); 
-        dAnt.setMonth(dAnt.getMonth() - 1);
-        const periodAnterior = getPeriodoId(dAnt);
+        if (categoriasParaImportar.includes(dataOriginal.type)) {
+            if (/\d+\/\d+$/.test(dataOriginal.desc)) continue;
 
-        const snapAtual = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`));
-        const descricoesExistentes = snapAtual.docs.map(d => d.data().desc);
-
-        const snapAnterior = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`));
-        
-        if (snapAnterior.empty) return mostrarAlerta("Nenhum dado encontrado no mês anterior." , "Não há registros para importar.");
-        
-        let contador = 0;
-        const anoAtual = dataView.getFullYear();
-        const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
-
-        for (const d of snapAnterior.docs) {
-            const dataOriginal = d.data();
-            const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
-            
-            if (categoriasParaImportar.includes(dataOriginal.type)) {
-                if (/\d+\/\d+$/.test(dataOriginal.desc)) continue;
-                if (descricoesExistentes.includes(dataOriginal.desc)) continue;
-
-                let novaData = dataOriginal.data;
+            // --- REGRA 1: CONTA DO MÊS ATUAL ---
+            if (!descricoesNoMes.includes(dataOriginal.desc)) {
+                let dataMesAtual = dataOriginal.data;
                 if (dataOriginal.data) {
-                    const diaOriginal = dataOriginal.data.split('-')[2];
-                    novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
+                    const dia = dataOriginal.data.split('-')[2];
+                    dataMesAtual = `${anoAtual}-${mesAtual}-${dia}`;
                 }
 
-                const nid = crypto.randomUUID();
-                await setDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`, nid), { 
-                    ...dataOriginal, id: nid, data: novaData,
-                    pago: (dataOriginal.type === 'receita'), createdAt: new Date().toISOString() 
+                const nidNovo = crypto.randomUUID();
+                await setDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`, nidNovo), { 
+                    ...dataOriginal, 
+                    id: nidNovo, 
+                    data: dataMesAtual,
+                    pago: (dataOriginal.type === 'receita'),
+                    createdAt: new Date().toISOString() 
+                });
+                contador++;
+            }
+
+            // --- REGRA 2: PENDÊNCIA (SE ESTAVA VENCIDA) ---
+            const descPendente = `${dataOriginal.desc} (PENDENTE)`;
+            if (!dataOriginal.pago && dataOriginal.type !== 'receita' && !descricoesNoMes.includes(descPendente)) {
+                const nidPendencia = crypto.randomUUID();
+                const [anoO, mesO, diaO] = dataOriginal.data.split('-');
+                const dataFormatadaBr = `${diaO}/${mesO}/${anoO}`;
+
+                await setDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`, nidPendencia), { 
+                    ...dataOriginal, 
+                    id: nidPendencia,
+                    desc: descPendente,
+                    obs: `⚠️ Vencido em ${dataFormatadaBr}`,
+                    data: dataOriginal.data, // Mantém data antiga para ficar vermelho
+                    pago: false,
+                    createdAt: new Date().toISOString() 
                 });
                 contador++;
             }
         }
-        
-        mostrarAlerta(contador === 0 ? "Nenhum item novo para importar!" : contador + " itens importados com sucesso!");
-        sync();
-    };
+    }
+    mostrarAlerta(contador === 0 ? "Tudo atualizado!" : contador + " itens processados!");
+    sync();
+};
 
     // Elementos do Modal de Criar Conta
 const modalCriar = document.getElementById('modal-criar');
