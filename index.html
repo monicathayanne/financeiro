@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Financeiro</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+    <!-- Google Fonts & FontAwesome -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="manifest" href="manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --azul-escuro: #003366;
+            --laranja: #FF8C00;
+            --verde-sucesso: #28a745;
+            --vermelho-erro: #dc3545;
+            --cinza-fundo: #f8fafc;
+            --branco: #ffffff;
+        }
+
+        #progresso-barra { transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out; }
+
+        /* Animação de pulso dourado */
+    @keyframes pulso-sucesso {
+        0% { box-shadow: 0 0 0 0 rgba(231, 49, 3, 0.842); transform: scale(1); }
+        50% { box-shadow: 0 0 20px 10px rgba(255, 153, 0, 0.767); transform: scale(1.02); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); transform: scale(1); }
+    }
+
+    .progresso-completo {
+        animation: pulso-sucesso 1.5s infinite;
+        background-color: #0fff07 !important; /* Muda para um dourado vibrante */
+    }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--cinza-fundo);
+            margin: 0; padding: 0;
+            color: #334155;
+            display: flex; flex-direction: column; min-height: 100vh;
+        }
+
+        header {
+            background-color: var(--azul-escuro);
+            color: var(--branco);
+            padding: 30px 20px 60px;
+            text-align: center;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .header-top { font-size: 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .header-title { font-size: 1.4rem; font-weight: 700; margin: 0; }
+
+
+
+        /* Estilos da Top Bar do Usuário */
+.user-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 15px 20px 5px 20px;
+    background: transparent;
+    border-bottom: none;
+    box-sizing: border-box;
+    margin-bottom: 15px; /* Empurra a frase de Salmos para baixo */
+}
+
+.user-email-info {
+    color: #ffffff;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0.9;
+    /* Evita que e-mails muito longos quebrem o layout no celular */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+/* Visual restaurado do botão de sair antigo */
+.btn-sair-novo {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+    padding: 6px 12px;
+    border-radius: 8px; /* Voltou para o arredondado suave */
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.3s;
+}
+
+.btn-sair-novo:hover {
+    background: #FF8C00; /* O Laranja vibrante voltou! */
+    border-color: #FF8C00;
+}
+
+
+#btn-abrir-notas {
+    color: var(--azul-escuro); /* Texto azul para aparecer no fundo branco */
+    border-color: rgba(0, 51, 102, 0.2);
+    background: #f1f5f9;
+}
+
+#btn-abrir-notas:hover {
+    color: #FF8C00;
+    background: #003366; 
+}
+
+/* Estilo Exclusivo do Botão Comparativo */
+#btn-abrir-comparativo {
+    color: #e0f2fe; /* Texto azul escuro */
+    border-color: rgba(0, 51, 102, 0.2);
+    background: #003366; /* Um azul bem clarinho para diferenciar do cinza das notas */
+    transition: all 0.3s ease;
+}
+
+#btn-abrir-comparativo:hover {
+    color: #003366;
+    background: #FF8C00; /* Fica um azul mais vivo no hover */
+    border-color: #FF8C00;
+}
+
+        .container {
+            max-width: 600px; width: 100%;
+            margin: -40px auto 0;
+            padding: 0 20px 100px;
+        }
+
+        .resumo-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px;
+        }
+
+        .resumo-card {
+            background: var(--branco); padding: 18px; border-radius: 20px;
+            text-align: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+            border-bottom: 4px solid transparent;
+        }
+
+        .resumo-card span { font-size: 0.7rem; color: #64748b; display: block; text-transform: uppercase; font-weight: 600; margin-bottom: 5px; }
+        .resumo-card strong { font-size: 1.1rem; color: var(--azul-escuro); }
+        .resumo-card.saldo { border-bottom-color: var(--laranja); }
+        .resumo-card.pago { border-bottom-color: var(--verde-sucesso); }
+
+        .month-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--branco); padding: 12px 25px; border-radius: 40px;
+            margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        }
+
+        .month-nav button { background: none; border: none; color: var(--azul-escuro); font-size: 1.2rem; cursor: pointer; padding: 5px 15px; }
+        .month-nav h3 { margin: 0; font-size: 1rem; color: var(--azul-escuro); text-transform: capitalize; }
+
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-header h2 { font-size: 0.9rem; color: var(--azul-escuro); text-transform: uppercase; }
+        .btn-add { background: var(--laranja); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; cursor: pointer; }
+
+        .card {
+            background: var(--branco); border-radius: 18px; padding: 16px; margin-bottom: 12px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); border-left: 6px solid #e2e8f0;
+        }
+
+        .card.pago { border-left-color: var(--verde-sucesso); }
+        .card.aberto { border-left-color: var(--laranja); }
+
+        .card-info h4 { margin: 0 0 4px; font-size: 0.95rem; color: var(--azul-escuro); text-transform: uppercase; }
+        .card-info p { margin: 0; font-size: 0.75rem; color: #94a3b8; font-weight: 500; }
+
+        .card-actions { text-align: right; }
+
+/* Destaque para contas vencidas */
+        .card.vencido { 
+            border-left-color: var(--vermelho-erro) !important; background-color: #fff5f5; 
+        } 
+        
+        .card.vencido h4 { color: var(--vermelho-erro); }
+
+        .val-input {
+            display: block; border: none; background: #f1f5f9; font-weight: 700;
+            color: var(--azul-escuro); text-align: right; padding: 6px 10px;
+            border-radius: 8px; width: 125px; margin-bottom: 8px; font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .status-btn {
+            font-size: 0.65rem; padding: 5px 12px; border-radius: 6px; border: none;
+            font-weight: 700; text-transform: uppercase; cursor: pointer; width: 90px;
+        }
+        .status-btn.pago { background: #dcfce7; color: #166534; }
+        .status-btn.aberto { background: #fff7ed; color: #9a3412; }
+
+        .btn-excluir { border:none; background:none; color:#94a3b8; font-size:11px; cursor:pointer; padding: 5px 0; }
+
+        /* Estilos do Modal Corrigidos */
+        .modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(0, 51, 102, 0.85); 
+            z-index: 2000; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+        }
+        
+        .modal-content { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 25px; 
+            width: 100%; 
+            max-width: 400px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2); 
+            position: relative;
+        }
+
+        .modal-content h3 { 
+            margin: 0 0 20px; 
+            color: var(--azul-escuro); 
+            font-size: 1.2rem; 
+            text-align: center;
+        }
+        
+        .form-group { 
+            margin-bottom: 15px; 
+            width: 100%; 
+        }
+        
+        .form-group label { 
+            display: block; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #64748b; 
+        }
+        
+        .form-group input, 
+        .form-group select { 
+            display: block;
+            width: 100%; 
+            padding: 12px; 
+            border: 1.5px solid #e2e8f0; 
+            border-radius: 12px; 
+            font-size: 1rem; 
+            outline: none; 
+            font-family: inherit;
+            background-color: #ffffff;
+        }
+        
+        .form-group input:focus, 
+        .form-group select:focus { 
+            border-color: var(--laranja); 
+        }
+        
+        .modal-footer { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+        
+        .btn-modal { 
+            flex: 1; 
+            padding: 14px; 
+            border-radius: 12px; 
+            border: none; 
+            font-weight: bold; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            font-family: inherit;
+        }
+
+        .btn-save-modal { background: var(--azul-escuro); color: white; }
+        .btn-cancel-modal { background: #f1f5f9; color: #64748b; }
+
+        /* Tela de Login Estilo Portal Contec */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--azul-escuro); z-index: 3000;
+            display: flex; align-items: center; justify-content: center;
+        }
+        
+        .login-card {
+            background: white; padding: 40px 30px; border-radius: 8px; 
+            width: 90%; max-width: 380px; text-align: center; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        
+        .login-icon {
+            font-size: 3.5rem; color: var(--laranja); margin-bottom: 10px;
+        }
+        
+        .login-card h2 { 
+            color: var(--azul-escuro); font-size: 1.3rem; margin: 0 0 30px; font-weight: 700;
+        }
+        
+        .login-input {
+            width: 100%; padding: 14px; margin-bottom: 15px; 
+            border: 1px solid #cbd5e1; border-radius: 6px;
+            font-size: 1rem; font-family: inherit; outline: none;
+        }
+        
+        .login-input:focus { border-color: var(--laranja); }
+        
+        .btn-login {
+            width: 100%; padding: 14px; background: #1e3a8a; /* Azul um pouco mais vivo para o botão */
+            color: white; border: none; border-radius: 6px; 
+            font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.3s;
+        }
+        
+        .btn-login:hover { background: var(--laranja); }
+        
+        .login-links { 
+            display: flex; justify-content: space-between; 
+            margin-top: 20px; font-size: 0.85rem; 
+        }
+        
+        .login-links a { color: var(--azul-escuro); text-decoration: none; cursor: pointer; }
+        .login-links a:hover { text-decoration: underline; color: var(--laranja); }
+
+        /* Estilos para os Modais de Login */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 51, 102, 0.85); /* Fundo azul escuro com transparência */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.modal-card {
+    position: relative; /* Para o botão de fechar ficar posicionado certinho */
+    animation: aparecerModal 0.3s ease-out; /* Dá um efeito suave ao abrir */
+}
+
+.fechar-modal {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 28px;
+    color: #003366;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.fechar-modal:hover {
+    color: #FF8C00;
+}
+
+/* Animação suave */
+@keyframes aparecerModal {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+        #loading-screen { position:fixed; top:0; left:0; width:100%; height:100%; background:white; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:9999; }
+    </style>
+</head>
+<body>
+
+
+ <div id="login-screen">
+    <div class="login-card">
+        <i class="fas fa-hand-holding-dollar login-icon"></i>
+        <h2>Controle Financeiro</h2>
+        
+        <input type="email" id="login-email" class="login-input" placeholder="Seu e-mail">
+        <input type="password" id="login-pass" class="login-input" placeholder="Sua senha">
+        
+        <button id="btn-entrar" class="btn-login">ACESSAR SISTEMA</button>
+        
+        <div class="login-links">
+            <a id="link-criar">Criar Conta</a>
+            <a id="link-reset">Esqueci a senha</a>
+        </div>
+    </div>
+</div>
+
+<div id="modal-criar" class="modal-overlay" style="display: none;">
+    <div class="login-card modal-card">
+        <span class="fechar-modal" id="fechar-modal-criar">&times;</span>
+        <i class="fas fa-user-plus login-icon" style="color: #FF8C00;"></i>
+        <h2>Nova Conta</h2>
+        
+        <input type="email" id="novo-email" class="login-input" placeholder="Digite seu e-mail">
+        <input type="password" id="nova-senha" class="login-input" placeholder="Crie uma senha">
+        
+        <button id="btn-cadastrar" class="btn-login" style="background-color: #FF8C00;">CADASTRAR</button>
+    </div>
+</div>
+
+<div id="modal-esqueci" class="modal-overlay" style="display: none;">
+    <div class="login-card modal-card">
+        <span class="fechar-modal" id="fechar-modal-esqueci">&times;</span>
+        <i class="fas fa-envelope login-icon" style="color: #003366;"></i>
+        <h2>Recuperar Senha</h2>
+        
+        <p style="text-align: center; color: #666; font-size: 0.9rem; margin-bottom: 15px;">
+            Digite o e-mail cadastrado e enviaremos um link de recuperação.
+        </p>
+        
+        <input type="email" id="recuperar-email" class="login-input" placeholder="Seu e-mail">
+        
+        <button id="btn-enviar-recuperacao" class="btn-login">ENVIAR LINK</button>
+    </div>
+</div>
+
+<div id="modal-alerta" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-bell login-icon" style="color: #FF8C00; font-size: 2rem; margin-bottom: 10px;"></i>
+        
+        <h3 id="alerta-titulo" style="color: #003366; margin-bottom: 15px;">Aviso</h3>
+        <p id="alerta-mensagem" style="color: #444; margin-bottom: 25px; line-height: 1.5;"></p>
+        
+        <button id="btn-fechar-alerta" class="btn-login" style="width: auto; padding: 10px 40px; border-radius: 8px;">OK</button>
+    </div>
+</div>
+
+
+<div id="modal-confirmar-exclusao" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-exclamation-triangle login-icon" style="color: var(--vermelho-erro); font-size: 2.5rem; margin-bottom: 15px;"></i>
+        
+        <h3 style="color: var(--azul-escuro); margin-bottom: 10px;">Confirmar Exclusão</h3>
+        <p id="texto-confirmar-exclusao" style="color: #444; margin-bottom: 25px;">Tem certeza que deseja excluir?</p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="btn-cancelar-exclusao" class="btn-login" style="background: transparent; color: var(--azul-escuro); border: 1px solid var(--azul-escuro); width: auto; padding: 8px 25px;">Cancelar</button>
+            <button id="btn-confirmar-exclusao" class="btn-login" style="background: var(--vermelho-erro); border: none; width: auto; padding: 8px 25px; color: white;">Sim, excluir</button>
+        </div>
+    </div>
+</div>
+
+
+<div id="modal-sair-app" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 30px 20px;">
+        <i class="fas fa-sign-out-alt login-icon" style="color: #FF8C00; font-size: 2rem; margin-bottom: 10px;"></i>
+        
+        <h3 style="color: #003366; margin-bottom: 10px;">Sair do Sistema</h3>
+        <p style="color: #444; margin-bottom: 25px;">Tem certeza de que deseja sair da sua conta?</p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button id="btn-cancelar-sair" class="btn-login" style="background: transparent; color: #003366; border: 1px solid #003366; width: auto; padding: 8px 25px;">Cancelar</button>
+            <button id="btn-confirmar-sair" class="btn-login" style="background: #FF8C00; border: none; width: auto; padding: 8px 25px;">Sim, sair</button>
+        </div>
+    </div>
+</div>
+
+
+<header>
+    <div class="user-top-bar">
+        <div class="user-email-info" id="user-email-display">
+            <i class="fas fa-user-circle"></i> Carregando...
+        </div>
+        <button id="btn-sair" class="btn-sair-novo">
+            <i class="fas fa-sign-out-alt"></i> Sair
+        </button>
+    </div>
+
+    <p class="header-top">"O SENHOR É O MEU PASTOR, NADA ME FALTARÁ." - SALMOS 23:1</p>
+
+    <i class="fas fa-hand-holding-dollar login-icon"></i>
+    
+    <h1 class="header-title" style="margin-top: 10px;">Controle Financeiro</h1>
+</header>
+
+<div class="container">
+    <div class="resumo-grid">
+        <div class="resumo-card"><span>Entradas</span><strong id="stat-receita">R$ 0,00</strong></div>
+        <div class="resumo-card saldo"><span>Saldo Real</span><strong id="stat-saldo">R$ 0,00</strong></div>
+        <div class="resumo-card pago"><span>Total Pago</span><strong id="stat-pago" style="color: var(--verde-sucesso);">R$ 0,00</strong></div>
+        <div class="resumo-card" style="border-bottom-color: var(--vermelho-erro);"><span>Em Aberto</span><strong id="stat-aberto" style="color: var(--vermelho-erro);">R$ 0,00</strong></div>
+    </div>
+
+    <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); text-align: center; display: none;" id="box-grafico">
+        <h3 style="font-size: 0.8rem; color: var(--azul-escuro); text-transform: uppercase; margin-top: 0; margin-bottom: 10px;">Despesas por Categoria</h3>
+        <div style="position: relative; height: 180px; width: 100%; display: flex; justify-content: center;">
+            <canvas id="graficoCategorias"></canvas>
+        </div>
+    </div>
+
+
+    <div style="background: var(--branco); padding: 15px; border-radius: 20px; margin-bottom: 25px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 700; color: var(--azul-escuro); margin-bottom: 8px; text-transform: uppercase;">
+        <span>Progresso de Pagamentos</span>
+        <span id="progresso-porcentagem">0%</span>
+    </div>
+    <div style="background: #e2e8f0; height: 12px; border-radius: 10px; overflow: hidden;">
+        <div id="progresso-barra" style="background: #28a745; width: 0%; height: 100%;"></div>
+    </div>
+    
+</div>
+
+    <div class="month-nav">
+        <button id="btn-prev"><i class="fas fa-chevron-left"></i></button>
+        <h3 id="mes-label">...</h3>
+        <button id="btn-next"><i class="fas fa-chevron-right"></i></button>
+    </div>
+
+    <div style="display: flex; justify-content: center; gap: 10px; margin: 15px auto; flex-wrap: wrap;">
+    <button id="btn-abrir-notas" class="btn-sair-novo" style="position: relative; margin: 0;">
+        <i class="fas fa-sticky-note"></i> Notas
+        <span id="indicador-nota" style="display: none; position: absolute; top: -5px; right: -2px; width: 8px; height: 8px; background-color: #FF8C00; border-radius: 50%; border: 2px solid var(--azul-escuro);"></span>
+    </button>
+
+    <button id="btn-abrir-comparativo" class="btn-sair-novo" style="margin: 0;">
+        <i class="fas fa-chart-line"></i> Comparativo
+    </button>
+
+    <button id="btn-gerar-pdf" class="btn-sair-novo" style="margin: 0; background-color: #27ae60; color: white; border: none;">
+        <i class="fas fa-file-pdf"></i> PDF
+    </button>
+    </div>
+
+    <div class="section-header"><h2>Contas Fixas</h2><button class="btn-add" id="add-fixa">+ Add</button></div>
+    <div id="lista-fixas"></div>
+
+    <div class="section-header" style="margin-top: 30px;">
+        <h2>Cartão de Crédito</h2>
+            <button class="btn-add" id="add-cartao">+ Add</button>
+    </div>
+    <div id="lista-cartao"></div>
+
+    <div class="section-header" style="margin-top: 30px;"><h2>Gastos Variáveis</h2><button class="btn-add" id="add-variavel">+ Add</button></div>
+    <div id="lista-variaveis"></div>
+
+    <div class="section-header" style="margin-top: 30px;"><h2>Recebimentos</h2><button class="btn-add" id="add-receita">+ Add</button></div>
+    <div id="lista-receitas"></div>
+
+    <div style="text-align: center; margin-top: 40px;">
+        <button id="btn-clone" style="background: #f1f5f9; border: 2px dashed var(--azul-escuro); padding: 12px 20px; border-radius: 15px; color: var(--azul-escuro); font-weight: 600; cursor: pointer; font-family: inherit;">
+            <i class="fas fa-sync"></i> Importar Fixas do Mês Anterior
+        </button>
+    </div>
+</div>
+
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <h3 id="modal-titulo">Novo Registro</h3>
+        
+        <div class="form-group">
+            <label>Descrição</label>
+            <input type="text" id="campo-desc" placeholder="Ex: Enel, Hapvida, Tim...">
+        </div>
+
+        <div class="form-group">
+            <label>Valor</label>
+            <input type="text" id="campo-valor" placeholder="R$ 0,00">
+        </div>
+
+        <div class="form-group">
+    <label>Categoria</label>
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <select id="campo-categoria" style="flex: 1; margin-bottom: 0;" required>
+            <option value="" disabled selected>Selecione uma categoria</option>
+            </select>
+        
+        <button type="button" id="btn-add-categoria" style="background: #FF8C00; color: white; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+</div>
+
+<div id="modal-nova-categoria" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="text-align: center; padding: 25px 20px; max-width: 400px; width: 90%;">
+        <h3 style="color: #003366; margin-bottom: 15px;">Gerenciar Categorias</h3>
+        
+        <div style="background: #f8fafc; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <input type="text" id="input-nova-categoria" class="login-input" placeholder="Nome da categoria..." style="margin-bottom: 10px; padding: 10px;">
+            
+            <p style="font-size: 0.75rem; color: #64748b; margin-bottom: 8px; text-align: left; font-weight: 600;">Cor da fatia no gráfico:</p>
+            
+            <div id="paleta-cores" style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px;">
+            </div>
+            
+            <button type="button" id="btn-salvar-categoria" class="btn-login" style="background: #FF8C00; border: none; width: 100%; padding: 10px;">
+                <i class="fas fa-plus"></i> Adicionar
+            </button>
+        </div>
+
+        <div style="text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <p style="font-size: 0.75rem; color: #64748b; margin: 0; font-weight: 600;">Suas Categorias:</p>
+                <span style="font-size: 0.75rem; font-weight: bold; color: var(--azul-escuro);"><span id="contador-cat">0</span>/16</span>
+            </div>
+            
+            <div id="lista-gerenciar-categorias" style="max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 5px;">
+            </div>
+        </div>
+        
+        <button type="button" id="btn-cancelar-categoria" class="btn-login" style="background: transparent; color: #003366; border: 1px solid #003366; width: 100%; margin-top: 15px; padding: 8px;">Fechar Gerenciador</button>
+    </div>
+</div>
+        
+
+
+        <div class="form-group" id="div-parcelas">
+            <label>Quantidade de Parcelas</label>
+            <input type="number" id="campo-parcelas" value="1" min="1" placeholder="Ex: 1 (à vista)">
+        </div>
+
+        <div class="form-group">
+            <label id="label-data">Vencimento</label> 
+            <input type="date" id="campo-data">
+        </div>
+
+        <div class="form-group" id="div-data-pagamento" style="display: none;">
+            <label style="color: var(--verde-sucesso);">Data do Pagamento Efetuado</label> 
+            <input type="date" id="campo-data-pagamento" style="border-color: var(--verde-sucesso);">
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-modal btn-cancel-modal" id="btn-cancel">Voltar</button>
+            <button class="btn-modal btn-save-modal" id="btn-save">Salvar</button>
+        </div>
+
+        
+    </div>
+</div>
+
+<div id="modal-notas" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="width: 90%; max-width: 400px; padding: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: var(--azul-escuro); margin: 0; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-edit" style="color: var(--laranja);"></i> Notas de <span id="nome-mes-nota"></span>
+            </h3>
+            <button id="fechar-modal-notas" style="background: none; border: none; font-size: 1.2rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        </div>
+
+        <textarea id="bloco-notas-mes" placeholder="Anote algo importante sobre este mês..." 
+            style="width: 100%; min-height: 150px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; font-family: inherit; font-size: 0.9rem; resize: none; outline: none; margin-bottom: 10px;"></textarea>
+        
+        <div id="status-salvamento-notas" style="font-size: 0.7rem; color: #94a3b8; text-align: right; height: 15px;"></div>
+
+        <button id="btn-fechar-notas-confirmar" class="btn-login" style="margin-top: 15px;">Pronto</button>
+    </div>
+</div>
+
+<div id="modal-comparativo" class="modal-overlay" style="display: none; z-index: 10000;">
+    <div class="login-card modal-card" style="width: 95%; max-width: 500px; padding: 25px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: var(--azul-escuro); margin: 0;"><i class="fas fa-balance-scale"></i> Análise Comparativa</h3>
+            <button id="fechar-modal-comp" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        
+        <div id="conteudo-relatorio" style="display: flex; flex-direction: column; gap: 15px;">
+            <p style="text-align: center; color: #666;">Processando dados...</p>
+        </div>
+      
+        <button id="btn-fechar-comp-pronto" class="btn-login" style="margin-top: 20px;">Entendido</button>
+    </div>
+</div>
+
+
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, getDocs, addDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDu_p2cO3FIHEMstdKtirMtP5D7an-p_tw",
+        authDomain: "gestao-financeira-bfdd8.firebaseapp.com",
+        projectId: "gestao-financeira-bfdd8",
+        storageBucket: "gestao-financeira-bfdd8.firebasestorage.app",
+        messagingSenderId: "594929048544",
+        appId: "1:594929048544:web:bc6989f12e80b18881a985"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    let user = null;
+    let dataView = new Date();
+    let modalTipo = "";
+    let meuGrafico = null;
+
+    // --- 1. AUTENTICAÇÃO ---
+    const logar = async () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+        try { await signInWithEmailAndPassword(auth, email, pass); } 
+        catch (e) { mostrarAlerta("Erro ao acessar: " + e.message); }
+    };
+
+
+    // Pegando o botão laranja do modal
+const btnCadastrar = document.getElementById('btn-cadastrar');
+
+// Criando a ação de clique nele
+btnCadastrar.addEventListener('click', async () => {
+    // Pegando os valores dos inputs DENTRO do modal
+    const emailNovo = document.getElementById('novo-email').value;
+    const senhaNova = document.getElementById('nova-senha').value;
+
+    // Verificação básica para não mandar vazio
+    if (!emailNovo || !senhaNova) {
+        mostrarAlerta("E-mail e senha são obrigatórios." , "Preencha o e-mail e a senha para cadastrar.");
+        return;
+    }
+
+    // Tentando criar a conta no Firebase
+    try {
+        // Usa a função do Firebase (certifique-se de que o 'auth' está declarado no seu arquivo)
+        await createUserWithEmailAndPassword(auth, emailNovo, senhaNova);
+        
+        // Se deu certo:
+        mostrarAlerta("Conta criada com sucesso!" , "🎉 Faça o login para acessar.");
+        
+        // Limpa os campos do modal
+        document.getElementById('novo-email').value = '';
+        document.getElementById('nova-senha').value = '';
+        
+        // Fecha o modal automaticamente
+        document.getElementById('modal-criar').style.display = 'none';
+
+    } catch (error) {
+        // Tratamento de erros comuns do Firebase para ficar amigável
+        if (error.code === 'auth/email-already-in-use') {
+            mostrarAlerta("Esse e-mail já está cadastrado no sistema." , "Use outro e-mail ou clique em 'Esqueci a Senha'.");
+        } else if (error.code === 'auth/weak-password') {
+            mostrarAlerta("A senha é muito fraca." , "Digite pelo menos 6 caracteres.");
+        } else {
+            mostrarAlerta("Erro ao criar conta: " + error.message);
+        }
+    }  
+});
+
+
+
+    onAuthStateChanged(auth, (u) => {
+    const loginScreen = document.getElementById('login-screen');
+    if (u && !u.isAnonymous) {
+        user = u;
+        loginScreen.style.display = 'none';
+        document.getElementById('user-email-display').innerHTML = `<i class="fas fa-user-circle"></i> ${u.email}`;
+        
+        // CHAMA AS CATEGORIAS AQUI:
+        carregarCategorias(u.uid);
+        
+        sync();
+    } else {
+        if (u && u.isAnonymous) signOut(auth);
+        user = null;
+        loginScreen.style.display = 'flex';
+    }
+});
+
+    // Elementos do Modal de Esqueci a Senha
+const modalEsqueci = document.getElementById('modal-esqueci');
+const btnAbrirEsqueci = document.getElementById('link-reset');
+const btnFecharEsqueci = document.getElementById('fechar-modal-esqueci');
+const btnEnviarRecuperacao = document.getElementById('btn-enviar-recuperacao');
+
+// Abrir o modal
+btnAbrirEsqueci.addEventListener('click', () => {
+    modalEsqueci.style.display = 'flex';
+});
+
+// Fechar o modal no X
+btnFecharEsqueci.addEventListener('click', () => {
+    modalEsqueci.style.display = 'none';
+});
+
+// Fechar o modal clicando fora dele
+window.addEventListener('click', (event) => {
+    if (event.target === modalEsqueci) {
+        modalEsqueci.style.display = 'none';
+    }
+});
+
+// Ação de enviar o e-mail pelo Firebase
+btnEnviarRecuperacao.addEventListener('click', async () => {
+    const emailRecuperacao = document.getElementById('recuperar-email').value;
+
+    if (!emailRecuperacao) {
+        mostrarAlerta("Para recuperar a senha" , "Por favor, digite seu e-mail.");
+        return;
+    }
+
+    try {
+        // Função nativa do Firebase para redefinir senha
+        await sendPasswordResetEmail(auth, emailRecuperacao);
+        
+        mostrarAlerta("Link enviado com sucesso!" , "Verifique sua caixa de entrada e a pasta de spam.");
+        
+        // Limpa o campo e fecha o modal
+        document.getElementById('recuperar-email').value = '';
+        modalEsqueci.style.display = 'none';
+
+    } catch (error) {
+        // Tratamento de erros
+        if (error.code === 'auth/user-not-found') {
+            mostrarAlerta("Não encontramos nenhuma conta com esse e-mail." , "Verifique o e-mail digitado ou crie uma nova conta.");
+        } else if (error.code === 'auth/invalid-email') {
+            mostrarAlerta("Por favor, digite um formato de e-mail válido." , "exemplo@exemplo.com");
+        } else {
+            mostrarAlerta("Erro ao enviar e-mail: " + error.message);
+        }
+    }
+});
+
+    document.getElementById('btn-entrar').onclick = logar;
+
+// Elementos do Modal de Sair
+const modalSairApp = document.getElementById('modal-sair-app');
+const btnSairHeader = document.getElementById('btn-sair'); // O botão Sair lá do cabeçalho
+const btnCancelarSair = document.getElementById('btn-cancelar-sair');
+const btnConfirmarSair = document.getElementById('btn-confirmar-sair');
+
+// 1. Quando clicar no Sair do topo, apenas abre o modal
+btnSairHeader.addEventListener('click', () => {
+    modalSairApp.style.display = 'flex';
+});
+
+// 2. Se clicar em Cancelar, fecha o modal e não faz nada
+btnCancelarSair.addEventListener('click', () => {
+    modalSairApp.style.display = 'none';
+});
+
+// 3. Se clicar em "Sim, sair", executa o Firebase e fecha a tela
+btnConfirmarSair.addEventListener('click', async () => {
+    try {
+        await signOut(auth); // Função do Firebase para deslogar
+        modalSairApp.style.display = 'none'; // Fecha o modal
+    } catch (error) {
+        mostrarAlerta("Erro", "Não foi possível sair: " + error.message);
+    }
+});
+
+    // Função para substituir o alert()
+function mostrarAlerta(titulo, mensagem) {
+    // Troca os textos do HTML pelos textos que você mandou na função
+    document.getElementById('alerta-titulo').innerText = titulo;
+    document.getElementById('alerta-mensagem').innerText = mensagem;
+    
+    // Mostra o modal na tela
+    document.getElementById('modal-alerta').style.display = 'flex';
+}
+
+// Fazer o botão "OK" do alerta fechar ele mesmo
+document.getElementById('btn-fechar-alerta').addEventListener('click', () => {
+    document.getElementById('modal-alerta').style.display = 'none';
+});
+
+
+    // --- 2. UTILITÁRIOS ---
+    // Versão protegida contra valores indefinidos
+    const formatMoney = (v) => {
+        const valorSeguro = v || 0; // Se v for undefined ou null, ele usa 0
+        return valorSeguro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    };
+    
+    const parseMoney = (s) => parseFloat(s.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const getPeriodoId = (d) => `${d.getMonth() + 1}-${d.getFullYear()}`;
+
+    const fecharModal = () => {
+        document.getElementById('modal').style.display = 'none';
+        document.getElementById('campo-desc').value = "";
+        document.getElementById('campo-valor').value = "";
+        document.getElementById('campo-data').value = "";
+        document.getElementById('campo-parcelas').value = "1";
+        
+        const divPagamento = document.getElementById('div-data-pagamento');
+        if (divPagamento) {
+            divPagamento.style.display = 'none';
+            document.getElementById('campo-data-pagamento').value = "";
+        }
+
+        window.editandoId = null;
+        const divParcelas = document.getElementById('div-parcelas');
+        if(divParcelas) divParcelas.style.display = 'block';
+    };
+
+    document.getElementById('campo-valor').oninput = (e) => {
+        let v = e.target.value.replace(/\D/g,'');
+        v = (v/100).toFixed(2) + '';
+        v = v.replace(".", ",");
+        v = v.replace(/(\d)(\d{3})(\d{3}),/g, "$1.$2.$3,");
+        v = v.replace(/(\d)(\d{3}),/g, "$1.$2,");
+        e.target.value = "R$ " + v;
+    };
+
+
+// MÓDULO DE CATEGORIAS DINÂMICAS (COM CORES E LIMITES)
+
+
+const campoCategoria = document.getElementById('campo-categoria');
+const btnAddCategoria = document.getElementById('btn-add-categoria');
+const modalNovaCategoria = document.getElementById('modal-nova-categoria');
+const btnCancelarCategoria = document.getElementById('btn-cancelar-categoria');
+const btnSalvarCategoria = document.getElementById('btn-salvar-categoria');
+const inputNovaCategoria = document.getElementById('input-nova-categoria');
+const divPaleta = document.getElementById('paleta-cores');
+const listaGerenciar = document.getElementById('lista-gerenciar-categorias');
+const contadorCat = document.getElementById('contador-cat');
+
+// 16 cores elegantes para o gráfico não virar um carnaval
+const paletaHex = [
+    '#d32f2f', '#c2185b', '#7b1fa2', '#512da8',
+    '#303f9f', '#1976d2', '#0288d1', '#0097a7',
+    '#00796b', '#388e3c', '#689f38', '#afb42b',
+    '#fbc02d', '#ffa000', '#f57c00', '#e64a19'
+];
+
+let corSelecionada = paletaHex[0];
+window.mapCoresAtuais = {}; // Guarda as cores globalmente para usarmos no gráfico depois!
+
+// 1. Desenhar as 16 bolinhas na tela
+function renderizarPaleta() {
+    divPaleta.innerHTML = '';
+    paletaHex.forEach(cor => {
+        const bolinha = document.createElement('div');
+        bolinha.style.width = '24px';
+        bolinha.style.height = '24px';
+        bolinha.style.borderRadius = '50%';
+        bolinha.style.backgroundColor = cor;
+        bolinha.style.cursor = 'pointer';
+        bolinha.style.border = cor === corSelecionada ? '3px solid #003366' : '3px solid transparent';
+        bolinha.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+
+        bolinha.onclick = () => {
+            corSelecionada = cor;
+            renderizarPaleta(); // Atualiza a bordinha de seleção
+        };
+        divPaleta.appendChild(bolinha);
+    });
+}
+
+// 2. Categorias padrão iniciais (agora com as cores clássicas originais)
+const categoriasPadrao = [
+    { nome: "Impostos", cor: "#d32f2f" },
+    { nome: "Educação", cor: "#1976d2" },
+    { nome: "Moradia", cor: "#7b1fa2" },
+    { nome: "Saúde", cor: "#0d9488" },
+    { nome: "Cartão", cor: "#4338ca" },
+    { nome: "Lazer", cor: "#db2777" },
+    { nome: "Mercado", cor: "#15803d" },
+    { nome: "Compras", cor: "#f57f17" },
+    { nome: "Outros", cor: "#64748b" }
+];
+
+// 3. Carregar tudo do Banco de Dados
+async function carregarCategorias(uid) {
+    try {
+        const categoriasRef = collection(db, 'usuarios', uid, 'categorias');
+        const snapshot = await getDocs(categoriasRef);
+        
+        campoCategoria.innerHTML = '<option value="" disabled selected>Selecione uma categoria</option>';
+        listaGerenciar.innerHTML = '';
+        let listaCategorias = [];
+        window.mapCoresAtuais = {}; // Reseta o mapa
+
+        if (snapshot.empty) {
+            for (let cat of categoriasPadrao) {
+                await addDoc(categoriasRef, cat);
+                listaCategorias.push({ id: 'temp', ...cat });
+            }
+            return carregarCategorias(uid); // Recarrega para pegar os IDs reais gerados
+        } else {
+            snapshot.forEach(doc => {
+                listaCategorias.push({ id: doc.id, ...doc.data() });
+            });
+        }
+
+        // 4. Travar limite de 16 e atualizar contador
+        const total = listaCategorias.length;
+        contadorCat.innerText = total;
+        
+        if (total >= 16) {
+            inputNovaCategoria.disabled = true;
+            inputNovaCategoria.placeholder = "Limite de 16 atingido!";
+            btnSalvarCategoria.disabled = true;
+            btnSalvarCategoria.style.opacity = "0.5";
+        } else {
+            inputNovaCategoria.disabled = false;
+            inputNovaCategoria.placeholder = "Nome da categoria...";
+            btnSalvarCategoria.disabled = false;
+            btnSalvarCategoria.style.opacity = "1";
+        }
+
+        // 5. Preencher a tela e o formulário
+        listaCategorias.sort((a,b) => a.nome.localeCompare(b.nome)).forEach(cat => {
+            // A. Adiciona no Select Principal
+            const option = document.createElement('option');
+            option.value = cat.nome;
+            option.textContent = cat.nome;
+            campoCategoria.appendChild(option);
+
+            // B. Salva a cor no mapa global para o Gráfico usar
+            window.mapCoresAtuais[cat.nome] = cat.cor || '#64748b';
+
+            // C. Cria a linha com a lixeirinha no Modal
+            const itemDiv = document.createElement('div');
+            itemDiv.style.display = 'flex';
+            itemDiv.style.justifyContent = 'space-between';
+            itemDiv.style.alignItems = 'center';
+            itemDiv.style.padding = '8px 12px';
+            itemDiv.style.background = '#ffffff';
+            itemDiv.style.border = '1px solid #e2e8f0';
+            itemDiv.style.borderRadius = '8px';
+
+            itemDiv.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 14px; height: 14px; border-radius: 50%; background: ${cat.cor || '#64748b'};"></div>
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #334155;">${cat.nome}</span>
+                </div>
+                <i class="fas fa-trash-alt btn-excluir-cat" style="color: #ef4444; cursor: pointer; font-size: 1rem;" title="Excluir Categoria"></i>
+            `;
+
+            // Ação da Lixeirinha
+            itemDiv.querySelector('.btn-excluir-cat').onclick = () => {
+                window.idParaExcluir = cat.id;
+                window.tipoParaExcluir = 'categoria';
+                document.getElementById('texto-confirmar-exclusao').innerText = `Excluir a categoria "${cat.nome}" permanentemente?`;
+                document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
+            };
+            listaGerenciar.appendChild(itemDiv);
+        });
+    } catch (error) {
+        console.error("Erro ao carregar categorias:", error);
+    }
+}
+
+// Inicia as bolinhas
+renderizarPaleta(); 
+
+// Eventos de abrir e fechar
+btnAddCategoria.addEventListener('click', () => {
+    modalNovaCategoria.style.display = 'flex';
+    inputNovaCategoria.focus();
+});
+
+btnCancelarCategoria.addEventListener('click', () => {
+    modalNovaCategoria.style.display = 'none';
+    inputNovaCategoria.value = '';
+});
+
+// Salvar a nova categoria com a cor
+btnSalvarCategoria.addEventListener('click', async () => {
+    const nomeCategoria = inputNovaCategoria.value.trim();
+    if (!nomeCategoria) return mostrarAlerta("Atenção!" , "Digite um nome para a categoria!");
+
+    try {
+        btnSalvarCategoria.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        
+        const categoriasRef = collection(db, 'usuarios', auth.currentUser.uid, 'categorias');
+        await addDoc(categoriasRef, { nome: nomeCategoria, cor: corSelecionada });
+        
+        await carregarCategorias(auth.currentUser.uid); // Atualiza tudo
+        campoCategoria.value = nomeCategoria; // Deixa ela selecionada no formulário
+        
+        inputNovaCategoria.value = '';
+        btnSalvarCategoria.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        btnSalvarCategoria.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+    }
+});
+
+// =========================================================
+// MÓDULO DE BLOCO DE NOTAS MENSAL
+// =========================================================
+
+let timeoutNotas = null;
+
+// Função para buscar a nota salva no Firebase
+async function carregarNotaMensal(uid) {
+    if (!uid) return;
+    const period = getPeriodoId(dataView); 
+    const notaRef = doc(db, 'usuarios', uid, 'financas', 'meses', `fin_${period}`, 'anotacoes_texto');
+    const indicador = document.getElementById('indicador-nota');
+    
+    try {
+        const docSnap = await getDoc(notaRef);
+        const campoNota = document.getElementById('bloco-notas-mes');
+        
+        if (docSnap.exists() && docSnap.data().texto.trim() !== "") {
+            campoNota.value = docSnap.data().texto;
+            if(indicador) indicador.style.display = 'block'; // Mostra a bolinha
+        } else {
+            campoNota.value = "";
+            if(indicador) indicador.style.display = 'none'; // Esconde a bolinha
+        }
+    } catch (e) {
+        console.error("Erro ao carregar nota:", e);
+    }
+}
+
+// Lógica de Abrir e Fechar o Modal
+const modalNotas = document.getElementById('modal-notas');
+const btnAbrirNotas = document.getElementById('btn-abrir-notas');
+const btnFecharX = document.getElementById('fechar-modal-notas');
+const btnPronto = document.getElementById('btn-fechar-notas-confirmar');
+
+btnAbrirNotas.onclick = () => {
+    // Atualiza o título do modal com o mês que você está vendo
+    const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    document.getElementById('nome-mes-nota').innerText = meses[dataView.getMonth()];
+    
+    modalNotas.style.display = 'flex';
+    carregarNotaMensal(user.uid);
+};
+
+// Fechar modal
+[btnFecharX, btnPronto].forEach(btn => {
+    btn.onclick = () => { modalNotas.style.display = 'none'; };
+});
+
+// Auto-save (Salva enquanto você digita)
+document.getElementById('bloco-notas-mes').oninput = (e) => {
+    const status = document.getElementById('status-salvamento-notas');
+    status.innerText = "Digitando...";
+
+    clearTimeout(timeoutNotas);
+
+    timeoutNotas = setTimeout(async () => {
+        if (!user) return;
+        const period = getPeriodoId(dataView);
+        const notaRef = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, 'anotacoes_texto');
+        
+        try {
+            await setDoc(notaRef, { texto: e.target.value }, { merge: true });
+            status.innerText = "Salvo automaticamente!";
+            
+            // Atualiza a bolinha laranja em tempo real
+            const indicador = document.getElementById('indicador-nota');
+            if (indicador) {
+                indicador.style.display = e.target.value.trim() !== "" ? 'block' : 'none';
+            }
+
+            setTimeout(() => { status.innerText = ""; }, 2000);
+        } catch (error) {
+            console.error("Erro ao salvar nota:", error);
+            status.innerText = "Erro ao salvar!";
+        }
+    }, 1500);
+};
+
+
+const modalComp = document.getElementById('modal-comparativo');
+
+document.getElementById('btn-abrir-comparativo').onclick = async () => {
+    modalComp.style.display = 'flex';
+    const container = document.getElementById('conteudo-relatorio');
+    container.innerHTML = '<p style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Analisando meses...</p>';
+
+    // 1. Identificar Mês Atual e Anterior
+    const dataAnterior = new Date(dataView.getFullYear(), dataView.getMonth() - 1, 1);
+    const periodAtual = getPeriodoId(dataView);
+    const periodAnterior = getPeriodoId(dataAnterior);
+
+    try {
+        // 2. Buscar dados de ambos no Firebase
+        const [snapAtual, snapAnterior] = await Promise.all([
+            getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`)),
+            getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`))
+        ]);
+
+        const totalizar = (snap) => {
+            let total = 0, cartao = 0, cats = {};
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (d.type !== 'receita') {
+                    total += (d.valor || 0);
+                    const cat = d.categoria || 'Outros';
+                    cats[cat] = (cats[cat] || 0) + (d.valor || 0);
+                    if (cat.toLowerCase().includes('cartão') || cat.toLowerCase().includes('cartao')) {
+                        cartao += (d.valor || 0);
+                    }
+                }
+            });
+            return { total, cartao, cats };
+        };
+
+        const atual = totalizar(snapAtual);
+        const anterior = totalizar(snapAnterior);
+
+        // 3. Gerar Insight Principal (Card do Topo)
+        const diffTotal = atual.total - anterior.total;
+        const percTotal = anterior.total > 0 ? ((diffTotal / anterior.total) * 100).toFixed(0) : 0;
+        
+        let htmlPrincipal = `
+            <div style="background: #f8fafc; padding: 15px; border-radius: 12px; border-left: 5px solid ${diffTotal > 0 ? '#ef4444' : '#10b981'};">
+                <span style="font-size: 0.85rem; color: #64748b;">Gastos Totais</span>
+                <h2 style="margin: 5px 0; color: var(--azul-escuro);">${formatMoney(atual.total)}</h2>
+                <p style="margin: 0; font-size: 0.85rem; color: ${diffTotal > 0 ? '#ef4444' : '#10b981'}; font-weight: bold;">
+                    ${diffTotal > 0 ? '↑ Aumentou' : '↓ Reduziu'} ${Math.abs(percTotal)}% em relação ao mês anterior.
+                </p>
+            </div>
+        `;
+
+        // Insight de Cartão
+        if (anterior.cartao > 0) {
+            const diffCartao = atual.cartao - anterior.cartao;
+            htmlPrincipal += `<p style="font-size: 0.9rem; color: #444; margin-top:10px;"><i class="fas fa-credit-card"></i> O uso do cartão <b>${diffCartao > 0 ? 'subiu' : 'caiu'}</b> ${formatMoney(Math.abs(diffCartao))}.</p>`;
+        }
+
+        // --- Lógica Blindada de Categorias ---
+        const catsAtual = Object.keys(atual.cats);
+        const catsAnterior = Object.keys(anterior.cats);
+        const normalizar = (str) => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+        const comuns = catsAtual.filter(c => catsAnterior.some(ant => normalizar(ant) === normalizar(c)));
+        const novas = catsAtual.filter(c => !catsAnterior.some(ant => normalizar(ant) === normalizar(c)));
+
+        let htmlCategorias = "";
+
+        // Bloco de Evolução (Comuns)
+        if (comuns.length > 0) {
+            htmlCategorias += `
+                <div style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: bold;">Evolução de Gastos:</span>
+                    ${comuns.map(c => {
+                        const nomeOriginalAnt = catsAnterior.find(ant => normalizar(ant) === normalizar(c));
+                        const vAnt = anterior.cats[nomeOriginalAnt];
+                        const vAtu = atual.cats[c];
+                        const d = vAtu - vAnt;
+                        const p = vAnt > 0 ? ((d / vAnt) * 100).toFixed(0) : 100;
+                        return `
+                            <div style="display: flex; justify-content: space-between; margin-top: 10px;">
+                                <span style="font-size: 0.9rem; color: #444;">${c}</span>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.9rem; font-weight: bold; color: var(--azul-escuro);">${formatMoney(vAtu)}</div>
+                                    <div style="font-size: 0.75rem; font-weight:600; color: ${d > 0 ? '#ef4444' : '#10b981'};">
+                                        ${d > 0 ? '↑' : '↓'} ${Math.abs(p)}%
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('')}
+                </div>`;
+        }
+
+        // Bloco de Gastos Novos
+        if (novas.length > 0) {
+            htmlCategorias += `
+                <div style="margin-top: 15px; background: #f1f5f9; padding: 10px; border-radius: 10px;">
+                    <span style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; font-weight: bold;">Categorias Novas:</span>
+                    ${novas.map(c => `
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #444; margin-top: 5px;">
+                            <span>${c}</span>
+                            <b>${formatMoney(atual.cats[c])}</b>
+                        </div>`).join('')}
+                </div>`;
+        }
+
+        container.innerHTML = htmlPrincipal + htmlCategorias;
+
+    } catch (e) {
+        console.error("Erro Relatório:", e);
+        container.innerHTML = '<p>Erro ao gerar relatório. Tente novamente.</p>';
+    }
+};
+
+// Lógica de fechar modal
+[document.getElementById('fechar-modal-comp'), document.getElementById('btn-fechar-comp-pronto')].forEach(btn => {
+    btn.onclick = () => modalComp.style.display = 'none';
+    
+});
+
+
+
+    // --- 3. SINCRONIZAÇÃO COM O BANCO ---
+    let unsub = null;
+    const sync = () => {
+        if (!user) return;
+        if (unsub) unsub();
+
+        onSnapshot(doc(db, 'usuarios', user.uid, 'settings', 'config'), (docSnap) => {
+            if (docSnap.exists() && docSnap.data().title) {
+                const titleEl = document.getElementById('app-title');
+                if(titleEl) titleEl.innerText = docSnap.data().title;
+            }
+        });
+
+        const period = getPeriodoId(dataView);
+        // CORREÇÃO AQUI: 5 partes para formar uma Collection válida!
+        const colRef = collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`);
+
+        unsub = onSnapshot(colRef, (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            render(data);
+        }, (err) => {
+            console.error("Erro Firestore:", err);
+        });
+
+        const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        document.getElementById('mes-label').innerText = `${meses[dataView.getMonth()]} / ${dataView.getFullYear()}`;
+    };
+
+   // --- 4. RENDERIZAÇÃO NA TELA (AGORA DINÂMICA) ---
+const render = (itens) => {
+    const lists = { 
+        fixa: document.getElementById('lista-fixas'), 
+        cartao: document.getElementById('lista-cartao'),
+        variavel: document.getElementById('lista-variaveis'), 
+        receita: document.getElementById('lista-receitas') 
+    };
+    Object.values(lists).forEach(l => { if(l) l.innerHTML = ""; });
+    
+    window.dadosTela = itens;
+    const hojeStr = new Date().toISOString().split('T')[0];
+    let tot = { rec: 0, pago: 0, ab: 0 };
+
+    itens.sort((a, b) => {
+        if (a.pago !== b.pago) return a.pago ? 1 : -1;
+        const catA = a.categoria || 'outros';
+        const catB = b.categoria || 'outros';
+        if (catA !== catB) return catA.localeCompare(catB); 
+        return new Date(a.data) - new Date(b.data); 
+    });
+
+    // --- LÓGICA DO GRÁFICO (Dinâmico) ---
+    let somaCategorias = {}; // Agora é um objeto vazio que se preenche sozinho
+
+    itens.forEach(i => {
+        const isVencido = i.type === 'fixa' && !i.pago && i.data && i.data < hojeStr;
+
+        // --- PONTE DE LEGADO: Traduz os nomes antigos para os novos ---
+        const mapaLegado = {
+            'imposto': 'Impostos', 'impostos': 'Impostos',
+            'educacao': 'Educação', 'educação': 'Educação',
+            'moradia': 'Moradia', 
+            'saude': 'Saúde', 'saúde': 'Saúde',
+            'cartao': 'Cartão', 'cartão': 'Cartão', 'cartao de credito': 'Cartão',
+            'lazer': 'Lazer',
+            'mercado': 'Mercado',
+            'compras': 'Compras',
+            'outros': 'Outros'
+        };
+
+        // Pega a categoria do banco. Se for antiga, ele traduz. Se for nova, ele mantém.
+        let catNome = i.categoria || 'Outros';
+        if (mapaLegado[catNome.toLowerCase()]) {
+            catNome = mapaLegado[catNome.toLowerCase()];
+        }
+
+        const card = document.createElement('div');
+        card.className = `card ${i.type === 'receita' ? '' : (i.pago ? 'pago' : 'aberto')} ${isVencido ? 'vencido' : ''}`;
+        
+        // Puxa a cor do mapa global usando o nome já traduzido e corrigido!
+        const corDaTag = window.mapCoresAtuais[catNome] || '#64748b';
+
+        card.innerHTML = `
+            <div class="card-info" style="display: flex; flex-direction: column; gap: 2px;">
+                <h4 style="margin: 0; font-size: 0.95rem;">${i.desc} ${isVencido ? '<i class="fas fa-exclamation-circle" title="Vencida" style="color: var(--vermelho-erro);"></i>' : ''}</h4>
+                <p style="margin: 0; font-size: 0.75rem;">
+                    ${catNome !== 'Outros' ? `<strong style="color: ${corDaTag}; text-transform: uppercase;">${catNome}</strong> &bull; ` : ''}${i.data ? i.data.split('-').reverse().join('/') : 'Sem data'}
+                    ${i.pago && i.dataPagamento ? `<br><span style="color: var(--verde-sucesso); font-weight: 600; font-size: 0.7rem;"><i class="fas fa-check-double"></i> Pago em: ${i.dataPagamento.split('-').reverse().join('/')}</span>` : ''}
+                </p>
+                <div style="margin-top: 4px;">
+                    <button class="btn-excluir" style="margin-right: 12px; color: var(--azul-escuro);" onclick="window.abrirEdicao('${i.id}')"><i class="fas fa-edit"></i> Editar</button>
+                    <button class="btn-excluir" onclick="window.excluir('${i.id}')"><i class="fas fa-trash"></i> Excluir</button>
+                </div>
+            </div>
+            <div class="card-actions" style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                 <input type="text" class="val-input" style="margin: 0; padding: 4px 8px; width: 110px;" value="${formatMoney(i.valor)}" onchange="window.updateVal('${i.id}', this.value)">
+                ${i.type !== 'receita' ? `<button class="status-btn ${i.pago ? 'pago' : 'aberto'}" style="margin: 0;" onclick="window.togStatus('${i.id}', ${i.pago})">${i.pago ? 'PAGO' : 'ABERTO'}</button>` : ''}
+            </div>
+        `;
+        lists[i.type]?.appendChild(card);
+        
+        if (i.type === 'receita') tot.rec += (i.valor || 0);
+        else if (i.pago) tot.pago += (i.valor || 0);
+        else tot.ab += (i.valor || 0);
+
+        // Soma os valores para o Gráfico usando o nome Corrigido!
+        if (i.type !== 'receita') {
+            somaCategorias[catNome] = (somaCategorias[catNome] || 0) + (i.valor || 0);
+        }
+    });
+
+
+    const totalDespesas = tot.pago + tot.ab;
+    const porcentagem = totalDespesas > 0 ? Math.round((tot.pago / totalDespesas) * 100) : 0;
+    const barra = document.getElementById('progresso-barra');
+    const textoPorcentagem = document.getElementById('progresso-porcentagem');
+
+    if (barra && textoPorcentagem) {
+        barra.style.width = `${porcentagem}%`;
+        textoPorcentagem.innerText = `${porcentagem}%`;
+        barra.style.backgroundColor = porcentagem < 40 ? "#FF8C00" : "#28a745";
+        if (porcentagem === 100) barra.classList.add('progresso-completo');
+        else barra.classList.remove('progresso-completo');
+    }
+
+    // --- GERANDO O GRÁFICO ---
+    const ctx = document.getElementById('graficoCategorias');
+    const boxGrafico = document.getElementById('box-grafico');
+    
+    if (totalDespesas > 0 && ctx && boxGrafico) {
+        boxGrafico.style.display = 'block';
+        if (meuGrafico) meuGrafico.destroy(); 
+
+        // Extrai os nomes e valores que foram somados
+        const labelsGrafico = Object.keys(somaCategorias);
+        const valoresGrafico = Object.values(somaCategorias);
+        
+        // Mapeia as cores baseadas nos nomes dinâmicos
+        const coresGrafico = labelsGrafico.map(cat => window.mapCoresAtuais[cat] || '#64748b');
+
+        meuGrafico = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labelsGrafico,
+                datasets: [{
+                    data: valoresGrafico,
+                    backgroundColor: coresGrafico,
+                    borderWidth: 3,
+                    borderColor: '#ffffff',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%', 
+                plugins: {
+                    legend: { 
+                        position: 'right', 
+                        labels: { boxWidth: 12, font: { size: 10, family: "'Poppins', sans-serif" } } 
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                 let label = context.label || '';
+                                if (label) label += ': ';
+                                const valor = context.raw;
+                                const formatado = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+                                label += formatado;
+                                const total = context.chart._metasets[context.datasetIndex].total;
+                                const porcentagem = Math.round((valor / total) * 100);
+                                return `${label} (${porcentagem}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else if (boxGrafico) {
+        boxGrafico.style.display = 'none';
+    }       
+
+    document.getElementById('stat-receita').innerText = formatMoney(tot.rec);
+    document.getElementById('stat-pago').innerText = formatMoney(tot.pago);
+    document.getElementById('stat-aberto').innerText = formatMoney(tot.ab);
+    document.getElementById('stat-saldo').innerText = formatMoney(tot.rec - tot.pago - tot.ab);
+};
+
+    // --- 5. FUNÇÕES GLOBAIS E EDIÇÃO ---
+    window.updateVal = async (id, v) => {
+        if (!user) return;
+        try {
+            const period = getPeriodoId(dataView);
+            const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id);
+            await updateDoc(ref, { valor: parseMoney(v) });
+        } catch (e) { console.error("Erro ao atualizar:", e); }
+    };
+
+    window.togStatus = async (id, s) => {
+        if (!user) return;
+        try {
+            const period = getPeriodoId(dataView);
+            const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, id);
+            
+            // Se a conta estava aberta (!s), pegamos a data de HOJE para registrar o pagamento
+            if (!s) {
+                const d = new Date();
+                // Ajustando para o fuso horário local corretamente (AAAA-MM-DD)
+                const dataHoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                
+                await updateDoc(ref, { pago: true, dataPagamento: dataHoje });
+            } else {
+                // Se a pessoa desmarcar o pagamento, ele volta a ficar aberto e apagamos a data de pagamento
+                await updateDoc(ref, { pago: false, dataPagamento: null });
+            }
+        } catch (e) { console.error("Erro ao alternar status:", e); }
+    };
+
+    window.excluir = (id) => {
+    if (!user) return;
+    window.idParaExcluir = id;
+    window.tipoParaExcluir = 'registro';
+    document.getElementById('texto-confirmar-exclusao').innerText = "Tem certeza que deseja remover este registro?";
+    document.getElementById('modal-confirmar-exclusao').style.display = 'flex';
+    };
+
+
+// PASSO 3: LÓGICA DO MODAL DE EXCLUSÃO
+
+window.idParaExcluir = null;
+window.tipoParaExcluir = null;
+
+// 1. Se clicar em Cancelar, apenas fecha
+document.getElementById('btn-cancelar-exclusao').addEventListener('click', () => {
+    document.getElementById('modal-confirmar-exclusao').style.display = 'none';
+    window.idParaExcluir = null;
+    window.tipoParaExcluir = null;
+});
+
+// 2. Se clicar em "Sim, excluir", o Firebase age
+document.getElementById('btn-confirmar-exclusao').addEventListener('click', async () => {
+    if (!window.idParaExcluir) return;
+
+    try {
+        if (window.tipoParaExcluir === 'registro') {
+            const period = getPeriodoId(dataView);
+            await deleteDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, window.idParaExcluir));
+            sync(); // Faz a despesa sumir da tela na hora
+            
+        } else if (window.tipoParaExcluir === 'categoria') {
+            await deleteDoc(doc(db, 'usuarios', user.uid, 'categorias', window.idParaExcluir));
+            carregarCategorias(user.uid); // Faz a categoria sumir do gerenciador na hora
+        }
+        
+        // Fecha o modal e limpa as variáveis
+        document.getElementById('modal-confirmar-exclusao').style.display = 'none'; 
+        window.idParaExcluir = null;
+        window.tipoParaExcluir = null;
+        
+    } catch (error) {
+        mostrarAlerta("Erro", "Não foi possível excluir: " + error.message);
+    }
+});
+
+
+    window.editandoId = null;
+    window.abrirEdicao = (id) => {
+        const item = window.dadosTela.find(x => x.id === id);
+        if (!item) return;
+
+        window.editandoId = id;
+        modalTipo = item.type;
+        document.getElementById('modal-titulo').innerText = "Editar Registro";
+        
+        document.getElementById('campo-desc').value = item.desc;
+        document.getElementById('campo-valor').value = formatMoney(item.valor);
+        document.getElementById('campo-categoria').value = item.categoria || 'outros';
+        document.getElementById('campo-data').value = item.data || '';
+        
+        const divParcelas = document.getElementById('div-parcelas');
+        if (divParcelas) divParcelas.style.display = 'none';
+
+        // Lógica da Data de Pagamento
+        const divPagamento = document.getElementById('div-data-pagamento');
+        if (divPagamento) {
+            if (item.pago && item.type !== 'receita') {
+                divPagamento.style.display = 'block';
+                document.getElementById('campo-data-pagamento').value = item.dataPagamento || item.data || '';
+            } else {
+                divPagamento.style.display = 'none';
+            }
+        }
+        
+        document.getElementById('modal').style.display = 'flex';
+    };
+
+    window.saveTitle = async (novoTitulo) => {
+        if (!user) return;
+        try {
+            await setDoc(doc(db, 'usuarios', user.uid, 'settings', 'config'), { title: novoTitulo }, { merge: true });
+        } catch (e) { console.error("Erro ao salvar título:", e); }
+    };
+
+// --- 6. EVENTO DE SALVAR E LÓGICA DAS PARCELAS ---
+    document.getElementById('btn-save').onclick = async () => {
+        if (!user) return;
+        const desc = document.getElementById('campo-desc').value;
+        const valor = parseMoney(document.getElementById('campo-valor').value);
+        const categoria = document.getElementById('campo-categoria').value;
+        const data = document.getElementById('campo-data').value || new Date().toISOString().split('T')[0];
+        const parcelas = parseInt(document.getElementById('campo-parcelas').value) || 1;
+
+        if (!desc || valor <= 0) return mostrarAlerta("Preencha os campos de descrição e valor!" , "Valor deve ser maior que R$ 0,00.");
+        
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.style.display = 'flex';
+
+        try {
+            const period = getPeriodoId(dataView);
+
+            if (window.editandoId) {
+                // CORREÇÃO DO ENDEREÇO NA EDIÇÃO
+                const ref = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${period}`, window.editandoId);
+                
+                // Monta o pacote base de atualização
+                const updateData = { desc, valor, categoria, data };
+                
+                // Se a data de pagamento estiver visível na edição, pega o valor dela
+                const divPgto = document.getElementById('div-data-pagamento');
+                const campoPgto = document.getElementById('campo-data-pagamento');
+                
+                if (divPgto && divPgto.style.display !== 'none' && campoPgto) {
+                    updateData.dataPagamento = campoPgto.value;
+                }
+
+                await updateDoc(ref, updateData);
+            } else {
+                // CORREÇÃO DO ENDEREÇO NA CRIAÇÃO DE NOVOS REGISTROS
+                for (let i = 0; i < parcelas; i++) {
+                    let d = new Date(data + 'T12:00:00');
+                    d.setMonth(d.getMonth() + i);
+                    const pId = getPeriodoId(d);
+                    const id = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
+                    
+                    // Olha o caminho exato aqui:
+                    const refNova = doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${pId}`, id);
+                    
+                    await setDoc(refNova, {
+                        type: modalTipo, desc: parcelas > 1 ? `${desc} ${i+1}/${parcelas}` : desc,
+                        valor, categoria, data: d.toISOString().split('T')[0], pago: (modalTipo === 'receita')
+                    });
+                }
+            }
+            document.getElementById('modal').style.display = 'none';
+            fecharModal();
+        } catch (e) { 
+            mostrarAlerta("Erro ao salvar: " + e.message); 
+        }
+        
+        if (loading) loading.style.display = 'none';
+    };
+
+    document.getElementById('btn-prev').onclick = () => { dataView.setMonth(dataView.getMonth() - 1); sync(); };
+    document.getElementById('btn-next').onclick = () => { dataView.setMonth(dataView.getMonth() + 1); sync(); };
+
+    const abrir = (t) => { 
+        modalTipo = t; 
+        document.getElementById('modal-titulo').innerText = "Novo Registro (" + t + ")"; 
+        const labelData = document.getElementById('label-data');
+        labelData.innerText = t === 'fixa' ? "Vencimento" : "Data do Gasto/Recebimento";
+        
+        const hoje = new Date();
+        const dataFormatada = hoje.toISOString().split('T')[0]; 
+        document.getElementById('campo-data').value = dataFormatada;
+
+        const divParcelas = document.getElementById('div-parcelas');
+        if (divParcelas) divParcelas.style.display = 'block';
+        window.editandoId = null;
+
+        document.getElementById('modal').style.display = 'flex'; 
+    };
+
+    document.getElementById('add-fixa').onclick = () => abrir('fixa');
+    document.getElementById('add-cartao').onclick = () => abrir('cartao');
+    document.getElementById('add-variavel').onclick = () => abrir('variavel');
+    document.getElementById('add-receita').onclick = () => abrir('receita');
+    document.getElementById('btn-cancel').onclick = () => document.getElementById('modal').style.display = 'none';
+
+    document.getElementById('btn-clone').onclick = async () => {
+        if (!user) return;
+        
+        const periodAtual = getPeriodoId(dataView);
+        const dAnt = new Date(dataView); 
+        dAnt.setMonth(dAnt.getMonth() - 1);
+        const periodAnterior = getPeriodoId(dAnt);
+
+        const snapAtual = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`));
+        const descricoesExistentes = snapAtual.docs.map(d => d.data().desc);
+
+        const snapAnterior = await getDocs(collection(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAnterior}`));
+        
+        if (snapAnterior.empty) return mostrarAlerta("Nenhum dado encontrado no mês anterior." , "Não há registros para importar.");
+        
+        let contador = 0;
+        const anoAtual = dataView.getFullYear();
+        const mesAtual = (dataView.getMonth() + 1).toString().padStart(2, '0');
+
+        for (const d of snapAnterior.docs) {
+            const dataOriginal = d.data();
+            const categoriasParaImportar = ['fixa', 'receita', 'cartao'];
+            
+            if (categoriasParaImportar.includes(dataOriginal.type)) {
+                if (/\d+\/\d+$/.test(dataOriginal.desc)) continue;
+                if (descricoesExistentes.includes(dataOriginal.desc)) continue;
+
+                let novaData = dataOriginal.data;
+                if (dataOriginal.data) {
+                    const diaOriginal = dataOriginal.data.split('-')[2];
+                    novaData = `${anoAtual}-${mesAtual}-${diaOriginal}`;
+                }
+
+                const nid = crypto.randomUUID();
+                await setDoc(doc(db, 'usuarios', user.uid, 'financas', 'meses', `fin_${periodAtual}`, nid), { 
+                    ...dataOriginal, id: nid, data: novaData,
+                    pago: (dataOriginal.type === 'receita'), createdAt: new Date().toISOString() 
+                });
+                contador++;
+            }
+        }
+        
+        mostrarAlerta(contador === 0 ? "Nenhum item novo para importar!" : contador + " itens importados com sucesso!");
+        sync();
+    };
+
+    // Elementos do Modal de Criar Conta
+const modalCriar = document.getElementById('modal-criar');
+const btnAbrirCriar = document.getElementById('link-criar');
+const btnFecharCriar = document.getElementById('fechar-modal-criar');
+
+// Abrir o modal
+btnAbrirCriar.addEventListener('click', () => {
+    modalCriar.style.display = 'flex';
+});
+
+// Fechar o modal no X
+btnFecharCriar.addEventListener('click', () => {
+    modalCriar.style.display = 'none';
+});
+
+// Fechar o modal se o usuário clicar fora do quadrado branco (no fundo escuro)
+window.addEventListener('click', (event) => {
+    if (event.target === modalCriar) {
+        modalCriar.style.display = 'none';
+    }
+});
+
+    // Função global para o botão de sair (vamos adicionar no HTML depois que der certo)
+    window.fazerLogout = () => {
+        if(confirm("Deseja sair do sistema?")) {
+            signOut(auth);
+        }
+    };
+
+
+
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log("App Pronto para Instalar!"))
+      .catch((err) => console.log("Erro no registro do App:", err));
+  }
+</script>
+</body>
+</html>
