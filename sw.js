@@ -1,4 +1,5 @@
-const CACHE_NAME = 'financas-v8.8';
+const CACHE_NAME = 'financas-v8.9';
+
 const assets = [
   './',
   './index.html',
@@ -7,7 +8,10 @@ const assets = [
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'
 ];
 
+// INSTALAÇÃO
 self.addEventListener('install', event => {
+  self.skipWaiting();
+
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(assets);
@@ -15,6 +19,22 @@ self.addEventListener('install', event => {
   );
 });
 
+// ATIVAÇÃO
+self.addEventListener('activate', event => {
+  clients.claim();
+
+  event.waitUntil(
+    caches.keys().then(keys => {
+      return Promise.all(
+        keys
+          .filter(key => key !== CACHE_NAME)
+          .map(key => caches.delete(key))
+      );
+    })
+  );
+});
+
+// FETCH
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(response => {
